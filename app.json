@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Expenses Manager",
+    "slug": "expenses-manager",
+    "scheme": "expensesmanager",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kivons.expensesmanager"
+    },
+    "android": {
+      "package": "com.kivons.expensesmanager",
+      "adaptiveIcon": {
+        "backgroundColor": "#7c6aff"
+      }
+    }
+  }
+}
