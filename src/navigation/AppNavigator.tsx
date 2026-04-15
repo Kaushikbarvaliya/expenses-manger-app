@@ -10,18 +10,18 @@ import { ChangePasswordScreen } from "../screens/ChangePasswordScreen";
 import { SheetsScreen } from "../screens/SheetsScreen";
 import { ExpenseFormScreen } from "../screens/ExpenseFormScreen";
 import { BudgetFormScreen } from "../screens/BudgetFormScreen";
-import { AppDrawer } from "./AppDrawer";
+import { IncomeFormScreen } from "../screens/IncomeFormScreen";
+import { AppTabs } from "./AppTabs";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
-  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>("Login");
   const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
     const bootstrap = async () => {
-      const user = await getStoredUser();
-      setInitialRoute(user?.token ? "Sheets" : "Login");
+      // We still run bootstrap to ensure storage is ready, but we don't force a route change here
+      await getStoredUser();
       setBootstrapped(true);
     };
     void bootstrap();
@@ -30,14 +30,15 @@ export function AppNavigator() {
   if (!bootstrapped) return null;
 
   return (
-    <Stack.Navigator initialRouteName={initialRoute}>
+    <Stack.Navigator initialRouteName="App">
       <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Sign In" }} />
       <Stack.Screen name="Register" component={RegisterScreen} options={{ title: "Create account" }} />
       <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: "Verify email" }} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: "Forgot Password" }} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: "Change Password" }} />
       <Stack.Screen name="Sheets" component={SheetsScreen} options={{ title: "Choose a sheet" }} />
-      <Stack.Screen name="App" component={AppDrawer} options={{ headerShown: false }} />
+      <Stack.Screen name="App" component={AppTabs} options={{ headerShown: false }} />
+
       <Stack.Screen
         name="ExpenseForm"
         component={ExpenseFormScreen}
@@ -56,7 +57,7 @@ export function AppNavigator() {
       />
       <Stack.Screen 
         name="IncomeForm"
-        component={require("../screens/IncomeFormScreen").IncomeFormScreen}
+        component={IncomeFormScreen}
         options={{
           headerShown: false,
           presentation: "modal"

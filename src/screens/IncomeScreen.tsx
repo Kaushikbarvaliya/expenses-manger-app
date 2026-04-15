@@ -14,83 +14,54 @@ import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { INCOME_SOURCES, COLORS } from "../constants/design";
+import { useCurrency } from "../context/CurrencyContext";
 
-type Income = {
-  _id: string;
-  name: string;
-  source: string;
-  amount: number;
-  date: string;
-  method?: string;
-  familyMemberName?: string;
-};
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { deleteTransaction, selectActiveTransactions } from "../store/slices/transactionSlice";
+import type { Income } from "../types";
 
-function formatINR(amount: number) {
-  try {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `₹${Math.round(amount)}`;
-  }
-}
 
 export function IncomeScreen({ navigation }: any) {
+  const { formatAmount } = useCurrency();
+  const dispatch = useAppDispatch();
+  const { incomes } = useAppSelector(selectActiveTransactions);
+  const loading = false;
+  const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [incomes, setIncomes] = useState<Income[]>([]);
 
   useEffect(() => {
     const bootstrap = async () => {
-      const u = await getStoredUser();
-      const sid = await getActiveSheetId();
-      setUser(u);
-      setSheetId(sid);
-      setLoading(false);
+      setUser(await getStoredUser());
+      setSheetId(await getActiveSheetId());
     };
     void bootstrap();
   }, []);
 
   const load = useCallback(async (isRefresh = false) => {
-    if (!user?.token) return;
-    if (isRefresh) setRefreshing(true);
-    try {
-      const list = await apiFetch<Income[]>("/incomes", { token: user.token, sheetId: sheetId || undefined });
-      setIncomes(Array.isArray(list) ? list : []);
-    } catch (e: unknown) {
-      Alert.alert("Failed to load income", e instanceof Error ? e.message : "Failed to load income");
-    } finally {
-      if (isRefresh) setRefreshing(false);
-    }
-  }, [sheetId, user?.token]);
-
-  useEffect(() => {
-    if (loading) return;
-    void load(false);
-  }, [load, loading]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      if (!loading) void load(false);
-    });
-    return unsubscribe;
-  }, [load, navigation, loading]);
+     if (isRefresh) {
+        setRefreshing(true);
+        setTimeout(() => setRefreshing(false), 500); // Dummy refresh for feedback
+     }
+  }, []);
 
   const total = useMemo(() => incomes.reduce((sum, x) => sum + (Number(x.amount) || 0), 0), [incomes]);
 
   const deleteIncome = async (id: string) => {
-    if (!user?.token) return;
     Alert.alert("Delete income?", "This cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          try {
-            await apiFetch<{ message: string }>(`/incomes/${id}`, { method: "DELETE", token: user.token, sheetId: sheetId || undefined });
-            setIncomes((prev) => prev.filter((x) => x._id !== id));
-          } catch (e: unknown) {
-            Alert.alert("Delete failed", e instanceof Error ? e.message : "Delete failed");
+          dispatch(deleteTransaction({ id, type: 'income' }));
+          
+          if (user?.token) {
+            try {
+              await apiFetch<{ message: string }>(`/incomes/${id}`, { method: "DELETE", token: user.token, sheetId: sheetId || undefined });
+            } catch (e: unknown) {
+              // Silently fail if offline
+            }
           }
         },
       },
@@ -101,7 +72,7 @@ export function IncomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.title}>Income</Text>
-        <Text style={styles.subtitle}>Total: {formatINR(total)} · {incomes.length} items</Text>
+        <Text style={styles.subtitle}>Total: {formatAmount(total)} · {incomes.length} items</Text>
       </View>
 
       {loading ? (
@@ -136,7 +107,7 @@ export function IncomeScreen({ navigation }: any) {
                       {item.familyMemberName ? ` · ${item.familyMemberName}` : ""}
                     </Text>
                   </View>
-                  <Text style={styles.amount}>{formatINR(item.amount)}</Text>
+                  <Text style={styles.amount}>{formatAmount(item.amount)}</Text>
                 </View>
                 <View style={styles.cardActions}>
                   <TouchableOpacity style={styles.smallButton} onPress={() => navigation.navigate("IncomeForm", { mode: "edit", incomeId: item._id })}>

@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getStoredUser, getActiveSheetId } from "../storage/auth";
 import { apiFetch } from "../api/client";
 import { CATEGORIES, COLORS } from "../constants/design";
+import { useCurrency } from "../context/CurrencyContext";
 import type { StoredUser } from "../navigation/types";
 
 const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -20,6 +21,7 @@ export function BudgetFormScreen({ navigation, route }: any) {
   const { mode, budgetId } = route.params || { mode: "add" };
   const isEdit = mode === "edit";
 
+  const { currencySymbol } = useCurrency();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
@@ -185,7 +187,7 @@ export function BudgetFormScreen({ navigation, route }: any) {
 
         {/* Total Budget */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Total Budget (₹)</Text>
+          <Text style={styles.label}>Total Budget ({currencySymbol})</Text>
           <TextInput
             style={styles.hugeInput}
             value={totalBudget}

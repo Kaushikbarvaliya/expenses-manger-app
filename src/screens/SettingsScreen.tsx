@@ -14,9 +14,14 @@ import { clearStoredUser, getStoredUser } from "../storage/auth";
 import type { StoredUser } from "../navigation/types";
 import { COLORS } from "../constants/design";
 import { apiFetch } from "../api/client";
+import { useCurrency } from "../context/CurrencyContext";
+import { useAppDispatch } from "../store/hooks";
+import { logout } from "../store/slices/transactionSlice";
 
 export function SettingsScreen({ navigation }: any) {
   const [user, setUser] = useState<StoredUser | null>(null);
+  const { currency, setCurrency } = useCurrency();
+  const dispatch = useAppDispatch();
   
   // Dummy toggle states for parity
   const [notifications, setNotifications] = useState({
@@ -30,7 +35,8 @@ export function SettingsScreen({ navigation }: any) {
     void getStoredUser().then((u) => setUser(u));
   }, []);
 
-  const logout = async () => {
+  const logoutAction = async () => {
+    dispatch(logout());
     await clearStoredUser();
     navigation.replace("Login");
   };
@@ -53,7 +59,28 @@ export function SettingsScreen({ navigation }: any) {
     return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
   };
 
-  if (!user) return <View style={styles.safe} />;
+  if (!user) return (
+    <View style={styles.safe}>
+      <View style={styles.header}>
+        <Text style={styles.pageTitle}>Settings</Text>
+      </View>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>👤 Profile</Text>
+          <View style={styles.guestBanner}>
+            <Text style={styles.guestIcon}>🔓</Text>
+            <Text style={styles.guestTitle}>You're browsing as a Guest</Text>
+            <Text style={styles.guestSubtitle}>Sign in to save your transactions to the cloud, access them on multiple devices, and unlock all premium features.</Text>
+            <TouchableOpacity style={styles.signinBtn} onPress={() => navigation.navigate("Login")}>
+              <Text style={styles.signinBtnText}>Sign In or Create Account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+
+  const isGuest = !user.token;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -67,44 +94,68 @@ export function SettingsScreen({ navigation }: any) {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>👤 Profile</Text>
           
-          <View style={styles.avatarRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
+          {isGuest ? (
+            <View style={styles.guestBanner}>
+              <Text style={styles.guestIcon}>🔓</Text>
+              <Text style={styles.guestTitle}>You're browsing as a Guest</Text>
+              <Text style={styles.guestSubtitle}>Sign in to save your transactions to the cloud, access them on multiple devices, and unlock all premium features.</Text>
+              <TouchableOpacity style={styles.signinBtn} onPress={() => navigation.navigate("Login")}>
+                <Text style={styles.signinBtnText}>Sign In or Create Account</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.userName}>{user.name || "User"}</Text>
-              <Text style={styles.userEmail}>{user.email || "No email available"}</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>Logged In</Text>
+          ) : (
+            <>
+              <View style={styles.avatarRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.userName}>{user.name || "User"}</Text>
+                  <Text style={styles.userEmail}>{user.email || "No email available"}</Text>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>Logged In</Text>
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput style={styles.input} value={user.name || ""} editable={false} />
-          </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Full Name</Text>
+                <TextInput style={styles.input} value={user.name || ""} editable={false} />
+              </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput style={styles.input} value={user.email || ""} editable={false} />
-          </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput style={styles.input} value={user.email || ""} editable={false} />
+              </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Account Status</Text>
-            <TextInput style={styles.input} value={"Authenticated"} editable={false} />
-          </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Account Status</Text>
+                <TextInput style={styles.input} value={"Authenticated"} editable={false} />
+              </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Currency</Text>
-            <View style={styles.inputReadOnlyBox}>
-                <Text style={{ color: COLORS.text, fontWeight: "600", fontSize: 15 }}>₹ INR - Indian Rupee</Text>
-            </View>
-          </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Currency</Text>
+                <View style={styles.currencyToggleRow}>
+                  <TouchableOpacity 
+                    style={[styles.currencyBtn, currency === "INR" && styles.currencyBtnActive]} 
+                    onPress={() => setCurrency("INR")}
+                  >
+                    <Text style={[styles.currencyBtnText, currency === "INR" && styles.currencyBtnTextActive]}>₹ INR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.currencyBtn, currency === "USD" && styles.currencyBtnActive]} 
+                    onPress={() => setCurrency("USD")}
+                  >
+                    <Text style={[styles.currencyBtnText, currency === "USD" && styles.currencyBtnTextActive]}>$ USD</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-           <TouchableOpacity style={styles.logoutBtn} onPress={() => void logout()}>
-             <Text style={styles.logoutBtnText}>Sign Out</Text>
-           </TouchableOpacity>
+               <TouchableOpacity style={styles.logoutBtn} onPress={() => void logoutAction()}>
+                 <Text style={styles.logoutBtnText}>Sign Out</Text>
+               </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* Notifications Card */}
@@ -203,4 +254,67 @@ const styles = StyleSheet.create({
     paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border
   },
   toggleLabel: { fontSize: 14, fontWeight: "600", color: COLORS.text },
+  
+  // Currency Toggle Styles
+  currencyToggleRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  currencyBtn: {
+    flex: 1,
+    backgroundColor: COLORS.surface2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  currencyBtnActive: {
+    backgroundColor: COLORS.accent + "15",
+    borderColor: COLORS.accent,
+  },
+  currencyBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.text2,
+  },
+  currencyBtnTextActive: {
+    color: COLORS.accent,
+  },
+
+  // Guest mode styles
+  guestBanner: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 8,
+  },
+  guestIcon: { fontSize: 40 },
+  guestTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  guestSubtitle: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: COLORS.text2,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  signinBtn: {
+    marginTop: 8,
+    backgroundColor: COLORS.accent,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    alignSelf: "stretch",
+  },
+  signinBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "900",
+  },
 });

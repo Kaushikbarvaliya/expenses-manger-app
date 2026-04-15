@@ -22,6 +22,7 @@ import type { SheetSummary, StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { COLORS } from "../constants/design";
+import { useCurrency } from "../context/CurrencyContext";
 
 type Member = {
   _id: string;
@@ -39,6 +40,7 @@ type Expense = {
 };
 
 export function MembersScreen({ navigation }: any) {
+  const { formatAmount } = useCurrency();
   const [user, setUser] = useState<StoredUser | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,9 +202,6 @@ export function MembersScreen({ navigation }: any) {
     ]);
   };
 
-  const formatINR = (amt: number) => {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amt);
-  };
 
   const copyToClipboard = (link: string) => {
     Clipboard.setString(link);
@@ -234,105 +233,120 @@ export function MembersScreen({ navigation }: any) {
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Members</Text>
-          <Text style={styles.subtitle}>{activeSheet?.sheetName || "Sheet Members"}</Text>
+          <Text style={styles.subtitle}>{user?.token ? (activeSheet?.sheetName || "Sheet Members") : "Guest Mode"}</Text>
         </View>
-        <TouchableOpacity style={styles.inviteOpener} onPress={openInvite}>
-          <Text style={styles.inviteOpenerText}>🤝 Invite</Text>
-        </TouchableOpacity>
+        {user?.token && (
+          <TouchableOpacity style={styles.inviteOpener} onPress={openInvite}>
+            <Text style={styles.inviteOpenerText}>🤝 Invite</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         
-        {/* Active Sheet Card */}
-        <View style={styles.card}>
-           <Text style={styles.sectionTitle}>Shared Sheet</Text>
-           <View style={styles.sheetInfo}>
-             <View style={styles.sheetRow}>
-                <Text style={styles.sheetLabel}>Active Sheet:</Text>
-                <Text style={styles.sheetValue}>{activeSheet?.sheetName || "My Sheet"}</Text>
-             </View>
-             <View style={styles.sheetRow}>
-                <Text style={styles.sheetLabel}>Your Role:</Text>
-                <View style={styles.roleBadge}>
-                   <Text style={styles.roleBadgeText}>{activeSheet?.role || "Owner"}</Text>
-                </View>
-             </View>
-           </View>
-        </View>
-
-        {/* Add Family Member Form */}
-        {canManage && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Add Family Member</Text>
-            <View style={styles.formRow}>
-               <TextInput
-                 style={[styles.input, { flex: 1.2 }]}
-                 placeholder="Name"
-                 value={newName}
-                 onChangeText={setNewName}
-                 placeholderTextColor={COLORS.text3}
-               />
-               <TextInput
-                 style={[styles.input, { flex: 1 }]}
-                 placeholder="Relation"
-                 value={newRelation}
-                 onChangeText={setNewRelation}
-                 placeholderTextColor={COLORS.text3}
-               />
-               <TouchableOpacity style={styles.addButton} onPress={() => void handleAddFamilyMember()} disabled={addingMember}>
-                 {addingMember ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.addButtonText}>Add</Text>}
-               </TouchableOpacity>
-            </View>
+        {!user?.token ? (
+          <View style={styles.guestPlaceholder}>
+            <Text style={styles.guestIcon}>👥</Text>
+            <Text style={styles.guestTitle}>Seamless Collaboration</Text>
+            <Text style={styles.guestText}>Sign in to create shared sheets, invite family members to track together, and sync data in real-time across all devices.</Text>
+            <TouchableOpacity style={styles.signinBtn} onPress={() => navigation.navigate("Settings")}>
+              <Text style={styles.signinBtnText}>Go to Profile</Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        {/* Members List */}
-        <View style={styles.card}>
-           <View style={styles.sectionHeader}>
-             <Text style={styles.sectionTitle}>Sheet Members</Text>
-             <Text style={styles.countText}>{members.length} total</Text>
-           </View>
-           
-           {members.length === 0 ? (
-             <View style={styles.empty}>
-               <Text style={styles.emptyText}>No members yet.</Text>
-             </View>
-           ) : (
-             members.map((m) => {
-               const memberId = m._id;
-               const spent = expenses.filter(e => {
-                  const mid = typeof e.familyMember === "object" ? e.familyMember?._id : e.familyMember;
-                  const uid = typeof e.assignedUser === "object" ? e.assignedUser?._id : e.assignedUser;
-                  return mid === memberId || uid === memberId;
-               }).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-
-               return (
-                 <View key={m._id} style={styles.memberItem}>
-                    <View style={{ flex: 1 }}>
-                       <View style={{ flexDirection: "row", alignItems: "center" }}>
-                          <Text style={styles.memberName}>{m.name}</Text>
-                          {m.isSystemUser && (
-                            <View style={styles.systemBadge}>
-                               <Text style={styles.systemBadgeText}>System</Text>
-                            </View>
-                          )}
-                       </View>
-                       <Text style={styles.memberRelation}>{m.relation}</Text>
-                    </View>
-                    <View style={{ alignItems: "flex-end", marginRight: 12 }}>
-                       <Text style={styles.spentLabel}>Spent</Text>
-                       <Text style={styles.spentValue}>{formatINR(spent)}</Text>
-                    </View>
-                    {canManage && !m.isSystemUser && (
-                      <TouchableOpacity style={styles.deleteBtn} onPress={() => void removeFamilyMember(m._id, m.name)}>
-                         <Text style={styles.deleteBtnText}>Del</Text>
-                      </TouchableOpacity>
-                    )}
+        ) : (
+          <>
+            {/* Active Sheet Card */}
+            <View style={styles.card}>
+               <Text style={styles.sectionTitle}>Shared Sheet</Text>
+               <View style={styles.sheetInfo}>
+                 <View style={styles.sheetRow}>
+                    <Text style={styles.sheetLabel}>Active Sheet:</Text>
+                    <Text style={styles.sheetValue}>{activeSheet?.sheetName || "My Sheet"}</Text>
                  </View>
-               );
-             })
-           )}
-        </View>
+                 <View style={styles.sheetRow}>
+                    <Text style={styles.sheetLabel}>Your Role:</Text>
+                    <View style={styles.roleBadge}>
+                       <Text style={styles.roleBadgeText}>{activeSheet?.role || "Owner"}</Text>
+                    </View>
+                 </View>
+               </View>
+            </View>
+
+            {/* Add Family Member Form */}
+            {canManage && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Add Family Member</Text>
+                <View style={styles.formRow}>
+                   <TextInput
+                     style={[styles.input, { flex: 1.2 }]}
+                     placeholder="Name"
+                     value={newName}
+                     onChangeText={setNewName}
+                     placeholderTextColor={COLORS.text3}
+                   />
+                   <TextInput
+                     style={[styles.input, { flex: 1 }]}
+                     placeholder="Relation"
+                     value={newRelation}
+                     onChangeText={setNewRelation}
+                     placeholderTextColor={COLORS.text3}
+                   />
+                   <TouchableOpacity style={styles.addButton} onPress={() => void handleAddFamilyMember()} disabled={addingMember}>
+                     {addingMember ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.addButtonText}>Add</Text>}
+                   </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Members List */}
+            <View style={styles.card}>
+               <View style={styles.sectionHeader}>
+                 <Text style={styles.sectionTitle}>Sheet Members</Text>
+                 <Text style={styles.countText}>{members.length} total</Text>
+               </View>
+               
+               {members.length === 0 ? (
+                 <View style={styles.empty}>
+                   <Text style={styles.emptyText}>No members yet.</Text>
+                 </View>
+               ) : (
+                 members.map((m) => {
+                   const memberId = m._id;
+                   const spent = expenses.filter(e => {
+                      const mid = typeof e.familyMember === "object" ? e.familyMember?._id : e.familyMember;
+                      const uid = typeof e.assignedUser === "object" ? e.assignedUser?._id : e.assignedUser;
+                      return mid === memberId || uid === memberId;
+                   }).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+                   return (
+                     <View key={m._id} style={styles.memberItem}>
+                        <View style={{ flex: 1 }}>
+                           <View style={{ flexDirection: "row", alignItems: "center" }}>
+                              <Text style={styles.memberName}>{m.name}</Text>
+                              {m.isSystemUser && (
+                                <View style={styles.systemBadge}>
+                                   <Text style={styles.systemBadgeText}>System</Text>
+                                </View>
+                              )}
+                           </View>
+                           <Text style={styles.memberRelation}>{m.relation}</Text>
+                        </View>
+                        <View style={{ alignItems: "flex-end", marginRight: 12 }}>
+                           <Text style={styles.spentLabel}>Spent</Text>
+                           <Text style={styles.spentValue}>{formatAmount(spent)}</Text>
+                        </View>
+                        {canManage && !m.isSystemUser && (
+                          <TouchableOpacity style={styles.deleteBtn} onPress={() => void removeFamilyMember(m._id, m.name)}>
+                             <Text style={styles.deleteBtnText}>Del</Text>
+                          </TouchableOpacity>
+                        )}
+                     </View>
+                   );
+                 })
+               )}
+            </View>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -473,4 +487,26 @@ const styles = StyleSheet.create({
   linkText: { fontSize: 13, color: COLORS.text2, backgroundColor: "#fff", padding: 10, borderRadius: 8, marginBottom: 12 },
   copyBtn: { backgroundColor: COLORS.accent, paddingVertical: 10, borderRadius: 10, alignItems: "center" },
   copyBtnText: { color: "#fff", fontSize: 13, fontWeight: "800" },
+  
+  // Guest styles
+  guestPlaceholder: {
+    padding: 30,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+    gap: 12,
+  },
+  guestIcon: { fontSize: 48, marginBottom: 4 },
+  guestTitle: { fontSize: 18, fontWeight: "900", color: COLORS.text, textAlign: "center" },
+  guestText: { fontSize: 14, fontWeight: "600", color: COLORS.text2, textAlign: "center", lineHeight: 22 },
+  signinBtn: {
+    marginTop: 10,
+    backgroundColor: COLORS.accent,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+  },
+  signinBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
 });

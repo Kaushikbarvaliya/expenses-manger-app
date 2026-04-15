@@ -14,13 +14,22 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { addTransaction, updateTransaction, selectActiveTransactions } from "../store/slices/transactionSlice";
+import type { Expense } from "../types";
 import { CATEGORIES, COLORS, PAYMENT_METHODS } from "../constants/design";
+import { useCurrency } from "../context/CurrencyContext";
 
 export function ExpenseFormScreen({ navigation, route }: any) {
-  const { mode, expenseId } = route.params || { mode: "add" };
+  const { currencySymbol } = useCurrency();
+  const dispatch = useAppDispatch();
+  const { mode, id: expenseId } = route.params || { mode: "add", id: null };
   const isEdit = mode === "edit";
 
-  const [loading, setLoading] = useState(isEdit);
+  const { expenses } = useAppSelector(selectActiveTransactions);
+  const existingExpense = expenses.find(e => e._id === expenseId);
+
+  const [loading, setLoading] = useState(false); // No need to load expense from API, but we might load Family members
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -33,51 +42,55 @@ export function ExpenseFormScreen({ navigation, route }: any) {
   const [recurring, setRecurring] = useState(false);
   const [frequency, setFrequency] = useState("monthly");
   
-  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<any[]>([{ _id: "self", name: "Me" }]);
+
+  // Set default member immediately so form is valid for guests
+  useEffect(() => {
+    if (!member) setMember("self");
+  }, []);
 
   useEffect(() => {
     const fetchMeta = async () => {
+      setLoading(true);
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        if (!u?.token) return;
         
-        const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
-        const apiMembers = Array.isArray(famRes) ? famRes : [];
-        const combinedMembers = [{ _id: "self", name: u.name || "Me" }, ...apiMembers.filter(m => m._id !== u._id)];
+        let apiMembers: any[] = [];
+        if (u?.token) {
+           const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
+           apiMembers = Array.isArray(famRes) ? famRes : [];
+        }
+        
+        const combinedMembers = [{ _id: "self", name: u?.name || "Me" }, ...apiMembers.filter(m => m._id !== u?._id)];
         setFamilyMembers(combinedMembers);
         
         if (combinedMembers.length > 0 && !isEdit) {
             setMember(combinedMembers[0]._id);
         }
 
-        if (isEdit) {
-          const res = await apiFetch<any>(`/expenses`, { token: u.token, sheetId: sid || undefined });
-          const exp = (Array.isArray(res) ? res : []).find((x) => x._id === expenseId);
-          if (exp) {
+        if (isEdit && existingExpense) {
+            const exp = existingExpense;
             setName(exp.name || "");
             setAmount(String(exp.amount || ""));
             setCategory(exp.category || "food");
             if (exp.category === "other" && exp.name) setCustomCatName(exp.name);
             setDate(exp.date ? new Date(exp.date).toISOString().split("T")[0] : "");
             setMethod(exp.method || "upi");
-            setNote(exp.note || "");
             
-            const assignedId = exp.assignedUser?._id || exp.assignedUser;
-            setMember(exp.familyMember?._id || exp.familyMember || (assignedId === u._id ? "self" : assignedId) || "self");
+            // Assume member assignment using familyMemberName in standard struct
+            setMember(exp.familyMemberName === (u?.name || "Me") ? "self" : exp.familyMemberName || "self");
             
             setRecurring(exp.recurring || false);
-            setFrequency(exp.frequency || "monthly");
-          }
         }
       } catch (e: unknown) {
-        Alert.alert("Error", "Failed to load data");
+        // Silent catch for offline mode
       } finally {
         setLoading(false);
       }
     };
     void fetchMeta();
-  }, [isEdit, expenseId]);
+  }, [isEdit, existingExpense]);
 
   const selectedCat = CATEGORIES.find((c) => c.id === category);
   const finalCat = category === "other" && customCatName.trim() ? customCatName.trim() : category;
@@ -90,37 +103,47 @@ export function ExpenseFormScreen({ navigation, route }: any) {
     if (!isValid || saving) return;
     setSaving(true);
     try {
-      const u = await getStoredUser();
-      const sid = await getActiveSheetId();
-      if (!u?.token) throw new Error("Not logged in");
-
-      const body = {
+      const selectedMemberName = familyMembers.find(m => m._id === member)?.name || "Me";
+      
+      const payload: Expense = {
+        _id: isEdit && expenseId ? expenseId : Date.now().toString() + Math.random().toString(36).substring(7),
         name: name.trim() || (category === "other" ? customCatName.trim() : selectedCat?.label) || "Expense",
         amount: numAmount,
         category: finalCat,
         date,
         method,
-        memberId: member,
-        note: note.trim() || undefined,
+        familyMemberName: selectedMemberName,
         recurring,
-        frequency: recurring ? frequency : undefined,
+        type: 'expense'
       };
 
       if (isEdit) {
-        await apiFetch(`/expenses/${expenseId}`, {
-          method: "PUT",
-          token: u.token,
-          sheetId: sid || undefined,
-          body: JSON.stringify(body),
-        });
+        dispatch(updateTransaction(payload));
       } else {
-        await apiFetch(`/expenses`, {
-          method: "POST",
-          token: u.token,
-          sheetId: sid || undefined,
-          body: JSON.stringify(body),
-        });
+        dispatch(addTransaction(payload));
       }
+
+      // Try sending to server if online (optional, ignoring fail)
+      try {
+        const u = await getStoredUser();
+        const sid = await getActiveSheetId();
+        if (u?.token) {
+           const body = {
+             name: payload.name, amount: payload.amount, category: payload.category, date: payload.date,
+             method: payload.method, memberId: member, note: note.trim() || undefined,
+             recurring, frequency: recurring ? frequency : undefined,
+           };
+           await apiFetch(isEdit ? `/expenses/${expenseId}` : `/expenses`, {
+             method: isEdit ? "PUT" : "POST",
+             token: u.token,
+             sheetId: sid || undefined,
+             body: JSON.stringify(body),
+           });
+        }
+      } catch (e) {
+         // Silently fail API, we rely on local Redux state for offline support
+      }
+      
       navigation.goBack();
     } catch (e: unknown) {
       Alert.alert("Error", e instanceof Error ? e.message : "Failed to save");
@@ -155,7 +178,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
           <View style={styles.amountContainer}>
             <Text style={styles.amountLabel}>AMOUNT</Text>
             <View style={styles.amountWrap}>
-              <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.accent2 : COLORS.text3 }]}>₹</Text>
+              <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.accent2 : COLORS.text3 }]}>{currencySymbol}</Text>
               <TextInput
                 style={[styles.amountInput, { color: isValid ? COLORS.text : COLORS.text3 }]}
                 placeholder="0"
@@ -168,7 +191,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
               {[100, 200, 500, 1000, 2000, 5000].map(val => (
                 <TouchableOpacity key={val} style={styles.quickAmtBtn} onPress={() => setAmount(String(val))}>
-                  <Text style={styles.quickAmtText}>₹{val}</Text>
+                  <Text style={styles.quickAmtText}>{currencySymbol}{val}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -315,7 +338,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
             {saving ? <ActivityIndicator color="#fff" /> : (
                 <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
                     {isValid ? (
-                        `${selectedCat?.icon || "⚡"} ${recurring ? "Add Recurring" : "Add"} ₹${numAmount} · ${category === "other" ? (customCatName.trim() || "Custom") : selectedCat?.label} ${recurring ? `(${frequency})` : ""}`
+                        `${selectedCat?.icon || "⚡"} ${recurring ? "Add Recurring" : "Add"} ${currencySymbol}${numAmount} · ${category === "other" ? (customCatName.trim() || "Custom") : selectedCat?.label} ${recurring ? `(${frequency})` : ""}`
                     ) : "⚡ Add Expense"}
                 </Text>
             )}

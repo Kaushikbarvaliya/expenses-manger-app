@@ -13,7 +13,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList, StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
-import { getStoredUser, setStoredUser } from "../storage/auth";
+import { getStoredUser, setStoredUser, getActiveSheetId } from "../storage/auth";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import {
+  clearGuestTransactions,
+  login,
+  selectGuestTransactions,
+  setLoggedIn,
+} from "../store/slices/transactionSlice";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -21,6 +28,8 @@ export function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { expenses, incomes } = useAppSelector(selectGuestTransactions);
 
   useEffect(() => {
     const redirectIfLoggedIn = async () => {
@@ -30,6 +39,11 @@ export function LoginScreen({ navigation }: Props) {
     void redirectIfLoggedIn();
   }, [navigation]);
 
+  const handleContinueAsGuest = () => {
+    dispatch(setLoggedIn(false));
+    navigation.replace("App");
+  };
+
   const handleLogin = async () => {
     const e = email.trim().toLowerCase();
     if (!e || !password) {
@@ -37,27 +51,99 @@ export function LoginScreen({ navigation }: Props) {
       return;
     }
     setLoading(true);
-    console.log("Attempting login for:", e);
     try {
       const user = await apiFetch<StoredUser>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email: e, password }),
       });
-      console.log("Login successful, user:", user._id);
       await setStoredUser(user);
-      console.log("Stored user, navigating to Sheets...");
-      navigation.replace("Sheets");
+
+      const hasOfflineData = expenses.length > 0 || incomes.length > 0;
+      if (hasOfflineData) {
+        // Must call setLoading(false) before Alert so button re-enables
+        setLoading(false);
+        Alert.alert(
+          "Sync Guest Data?",
+          `You have ${expenses.length + incomes.length} transaction(s) created as a guest. Merge them into your account?`,
+          [
+            {
+              text: "No, Delete It",
+              style: "destructive",
+              onPress: () => {
+                dispatch(clearGuestTransactions());
+                dispatch(login());
+                navigation.replace("Sheets");
+              },
+            },
+            {
+              text: "Yes, Merge",
+              style: "default",
+              onPress: async () => {
+                setLoading(true);
+                try {
+                  const sid = await getActiveSheetId();
+
+                  // Sync expenses
+                  for (const exp of expenses) {
+                    await apiFetch(`/expenses`, {
+                      method: "POST",
+                      token: user.token,
+                      sheetId: sid || undefined,
+                      body: JSON.stringify({
+                        name: exp.name,
+                        amount: exp.amount,
+                        category: exp.category,
+                        date: exp.date,
+                        method: exp.method,
+                        memberId: "self",
+                        recurring: exp.recurring,
+                      }),
+                    }).catch(() => {});
+                  }
+
+                  // Sync incomes
+                  for (const inc of incomes) {
+                    await apiFetch(`/incomes`, {
+                      method: "POST",
+                      token: user.token,
+                      sheetId: sid || undefined,
+                      body: JSON.stringify({
+                        name: inc.name,
+                        amount: inc.amount,
+                        source: inc.source,
+                        date: inc.date,
+                        method: inc.method,
+                        memberId: "self",
+                      }),
+                    }).catch(() => {});
+                  }
+
+                  dispatch(login());
+                  navigation.replace("Sheets");
+                } catch (syncErr: unknown) {
+                  Alert.alert("Sync Error", "Could not fully sync guest data, but you are logged in.");
+                  dispatch(login());
+                  navigation.replace("Sheets");
+                } finally {
+                  setLoading(false);
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        dispatch(login());
+        navigation.replace("Sheets");
+        setLoading(false);
+      }
     } catch (err: unknown) {
-      console.error("Login Error:", err);
       const message = err instanceof Error ? err.message : "Login failed";
-      
       if (message.toLowerCase().includes("verify your email")) {
+        setLoading(false);
         navigation.navigate("VerifyEmail", { email: e });
         return;
       }
-      
       Alert.alert("Login failed", message);
-    } finally {
       setLoading(false);
     }
   };
@@ -126,7 +212,21 @@ export function LoginScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("Register")}
             activeOpacity={0.8}
           >
-            <Text style={styles.linkText}>Don’t have an account? Create one</Text>
+            <Text style={styles.linkText}>Don't have an account? Create one</Text>
+          </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.guestButton}
+            onPress={handleContinueAsGuest}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.guestButtonText}>👤  Continue as Guest</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -183,7 +283,18 @@ const styles = StyleSheet.create({
   },
   primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: { color: "#ffffff", fontWeight: "900", fontSize: 15 },
-  linkButton: { paddingVertical: 10, alignItems: "center" },
+  linkButton: { paddingVertical: 6, alignItems: "center" },
   linkText: { color: "#6655ee", fontWeight: "900", fontSize: 13 },
+  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(0,0,0,0.08)" },
+  dividerText: { fontSize: 12, fontWeight: "700", color: "#9ca3af" },
+  guestButton: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.1)",
+    backgroundColor: "#f9fafb",
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  guestButtonText: { color: "#374151", fontWeight: "800", fontSize: 14 },
 });
-

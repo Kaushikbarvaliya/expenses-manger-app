@@ -29,12 +29,11 @@ export type RootStackParamList = {
   IncomeForm: { mode: "add" } | { mode: "edit"; incomeId: string };
 };
 
-export type DrawerParamList = {
-  Dashboard: undefined;
-  Expenses: undefined;
-  Income: undefined;
-  Budgets: undefined;
-  Members: undefined;
+export type TabParamList = {
+  Home: undefined;
+  Report: undefined;
+  Plan: undefined;
   Settings: undefined;
 };
+
 

@@ -3,6 +3,7 @@ import type { StoredUser } from "../navigation/types";
 
 const USER_KEY = "expense-tracker-user";
 const ACTIVE_SHEET_ID_KEY = "expense-tracker-active-sheet-id";
+const CURRENCY_KEY = "expense-tracker-currency";
 
 export async function getStoredUser(): Promise<StoredUser | null> {
   try {
@@ -28,5 +29,14 @@ export async function setActiveSheetId(sheetId: string): Promise<void> {
 
 export async function getActiveSheetId(): Promise<string | null> {
   return AsyncStorage.getItem(ACTIVE_SHEET_ID_KEY);
+}
+
+export async function getStoredCurrency(): Promise<string> {
+  const val = await AsyncStorage.getItem(CURRENCY_KEY);
+  return val || "INR";
+}
+
+export async function setStoredCurrency(currency: string): Promise<void> {
+  await AsyncStorage.setItem(CURRENCY_KEY, currency);
 }
 

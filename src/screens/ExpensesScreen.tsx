@@ -14,84 +14,57 @@ import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { CATEGORIES, COLORS } from "../constants/design";
+import { useCurrency } from "../context/CurrencyContext";
 
-type Expense = {
-  _id: string;
-  name: string;
-  category: string;
-  amount: number;
-  date: string;
-  method?: string;
-  familyMemberName?: string;
-  recurring?: boolean;
-};
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { deleteTransaction, selectActiveTransactions } from "../store/slices/transactionSlice";
+import type { Expense } from "../types";
 
-function formatINR(amount: number) {
-  try {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `₹${Math.round(amount)}`;
-  }
-}
 
 export function ExpensesScreen({ navigation }: any) {
+  const { formatAmount } = useCurrency();
+  const dispatch = useAppDispatch();
+  const { expenses } = useAppSelector(selectActiveTransactions);
+  const loading = false;
+  const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
 
   useEffect(() => {
     const bootstrap = async () => {
       setUser(await getStoredUser());
       setSheetId(await getActiveSheetId());
-      setLoading(false);
     };
     void bootstrap();
   }, []);
 
   const loadExpenses = useCallback(async (isRefresh = false) => {
-    if (!user?.token) return;
-    if (isRefresh) setRefreshing(true);
-    try {
-      const list = await apiFetch<Expense[]>("/expenses", { token: user.token, sheetId: sheetId || undefined });
-      setExpenses(Array.isArray(list) ? list : []);
-    } catch (e: unknown) {
-      Alert.alert("Failed to load expenses", e instanceof Error ? e.message : "Error");
-    } finally {
-      if (isRefresh) setRefreshing(false);
-    }
-  }, [sheetId, user?.token]);
-
-  useEffect(() => {
-    if (loading) return;
-    void loadExpenses(false);
-  }, [loadExpenses, loading]);
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      if (!loading) void loadExpenses(false);
-    });
-    return unsubscribe;
-  }, [loadExpenses, navigation, loading]);
+     // Rely on background sync from Dashboard or global store, skip duplicate loading logic here when possible to prevent redundant flashes
+     if (isRefresh) {
+        setRefreshing(true);
+        setTimeout(() => setRefreshing(false), 500); // Dummy refresh for feedback
+     }
+  }, []);
 
   const handleDelete = async (expenseId: string) => {
-    if (!user?.token) return;
     Alert.alert("Delete", "Cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          try {
-            await apiFetch<{ message: string }>(`/expenses/${expenseId}`, {
-              method: "DELETE",
-              token: user.token,
-              sheetId: sheetId || undefined,
-            });
-            setExpenses((prev) => prev.filter((x) => x._id !== expenseId));
-          } catch (e: unknown) {
-            Alert.alert("Delete failed", e instanceof Error ? e.message : "Error");
+          dispatch(deleteTransaction({ id: expenseId, type: 'expense' }));
+          
+          if (user?.token) {
+            try {
+              await apiFetch<{ message: string }>(`/expenses/${expenseId}`, {
+                method: "DELETE",
+                token: user.token,
+                sheetId: sheetId || undefined,
+              });
+            } catch (e: unknown) {
+              // Fail silently since it's offline-first
+            }
           }
         },
       },
@@ -104,7 +77,7 @@ export function ExpensesScreen({ navigation }: any) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.title}>All Expenses</Text>
-        <Text style={styles.subtitle}>Total: {formatINR(total)} · {expenses.length} items</Text>
+        <Text style={styles.subtitle}>Total: {formatAmount(total)} · {expenses.length} items</Text>
       </View>
 
       {loading ? (
@@ -142,7 +115,7 @@ export function ExpensesScreen({ navigation }: any) {
                       {item.familyMemberName ? ` · ${item.familyMemberName}` : ""}
                     </Text>
                   </View>
-                  <Text style={styles.amount}>{formatINR(item.amount)}</Text>
+                  <Text style={styles.amount}>{formatAmount(item.amount)}</Text>
                 </View>
                 <View style={styles.cardActions}>
                   <TouchableOpacity style={styles.smallButton} onPress={() => navigation.navigate("ExpenseForm", { mode: "edit", expenseId: item._id })}>

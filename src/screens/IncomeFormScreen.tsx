@@ -14,13 +14,22 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { addTransaction, updateTransaction, selectActiveTransactions } from "../store/slices/transactionSlice";
+import type { Income } from "../types";
 import { INCOME_SOURCES, COLORS, PAYMENT_METHODS } from "../constants/design";
+import { useCurrency } from "../context/CurrencyContext";
 
 export function IncomeFormScreen({ navigation, route }: any) {
-  const { mode, incomeId } = route.params || { mode: "add" };
+  const { currencySymbol } = useCurrency();
+  const dispatch = useAppDispatch();
+  const { mode, id: incomeId } = route.params || { mode: "add", id: null };
   const isEdit = mode === "edit";
 
-  const [loading, setLoading] = useState(isEdit);
+  const { incomes } = useAppSelector(selectActiveTransactions);
+  const existingIncome = incomes.find(i => i._id === incomeId);
+
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -31,48 +40,53 @@ export function IncomeFormScreen({ navigation, route }: any) {
   const [note, setNote] = useState("");
   const [member, setMember] = useState("");
 
-  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<any[]>([{ _id: "self", name: "Me" }]);
+
+  // Set default member immediately so form is valid for guests
+  useEffect(() => {
+    if (!member) setMember("self");
+  }, []);
 
   useEffect(() => {
     const fetchMeta = async () => {
+      setLoading(true);
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        if (!u?.token) return;
         
-        const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
-        const apiMembers = Array.isArray(famRes) ? famRes : [];
-        const combinedMembers = [{ _id: "self", name: u.name || "Me" }, ...apiMembers.filter(m => m._id !== u._id)];
+        let apiMembers: any[] = [];
+        if (u?.token) {
+           const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
+           apiMembers = Array.isArray(famRes) ? famRes : [];
+        }
+        
+        const combinedMembers = [{ _id: "self", name: u?.name || "Me" }, ...apiMembers.filter(m => m._id !== u?._id)];
         setFamilyMembers(combinedMembers);
         
         if (combinedMembers.length > 0 && !isEdit) {
             setMember(combinedMembers[0]._id);
         }
 
-        if (isEdit) {
-          const res = await apiFetch<any>(`/incomes`, { token: u.token, sheetId: sid || undefined });
-          const inc = (Array.isArray(res) ? res : []).find((x) => x._id === incomeId);
-          if (inc) {
+        if (isEdit && existingIncome) {
+            const inc = existingIncome;
             setName(inc.name || "");
             setAmount(String(inc.amount || ""));
             setSource(inc.source || "salary");
             if (inc.source === "other" && inc.name) setCustomSourceName(inc.name);
             setDate(inc.date ? new Date(inc.date).toISOString().split("T")[0] : "");
             setMethod(inc.method || "salary");
-            setNote(inc.note || "");
             
-            const assignedId = inc.assignedUser?._id || inc.assignedUser;
-            setMember(inc.familyMember?._id || inc.familyMember || (assignedId === u._id ? "self" : assignedId) || "self");
-          }
+            // Assume member assignment using familyMemberName in standard struct
+            setMember(inc.familyMemberName === (u?.name || "Me") ? "self" : inc.familyMemberName || "self");
         }
       } catch (e: unknown) {
-        Alert.alert("Error", "Failed to load data");
+        // silently catch offline
       } finally {
         setLoading(false);
       }
     };
     void fetchMeta();
-  }, [isEdit, incomeId]);
+  }, [isEdit, existingIncome]);
 
   const selectedSource = INCOME_SOURCES.find((s) => s.id === source);
   const finalSource = source === "other" && customSourceName.trim() ? customSourceName.trim() : source;
@@ -85,35 +99,45 @@ export function IncomeFormScreen({ navigation, route }: any) {
     if (!isValid || saving) return;
     setSaving(true);
     try {
-      const u = await getStoredUser();
-      const sid = await getActiveSheetId();
-      if (!u?.token) throw new Error("Not logged in");
-
-      const body = {
+      const selectedMemberName = familyMembers.find(m => m._id === member)?.name || "Me";
+      
+      const payload: Income = {
+        _id: isEdit && incomeId ? incomeId : Date.now().toString() + Math.random().toString(36).substring(7),
         name: name.trim() || (source === "other" ? customSourceName.trim() : selectedSource?.label) || "Income",
         amount: numAmount,
         source: finalSource,
         date,
         method,
-        memberId: member,
-        note: note.trim() || undefined,
+        familyMemberName: selectedMemberName,
+        type: 'income'
       };
 
       if (isEdit) {
-        await apiFetch(`/incomes/${incomeId}`, {
-          method: "PUT",
-          token: u.token,
-          sheetId: sid || undefined,
-          body: JSON.stringify(body),
-        });
+        dispatch(updateTransaction(payload));
       } else {
-        await apiFetch(`/incomes`, {
-          method: "POST",
-          token: u.token,
-          sheetId: sid || undefined,
-          body: JSON.stringify(body),
-        });
+        dispatch(addTransaction(payload));
       }
+
+      // Try sending to server if online (optional, ignoring fail)
+      try {
+        const u = await getStoredUser();
+        const sid = await getActiveSheetId();
+        if (u?.token) {
+           const body = {
+             name: payload.name, amount: payload.amount, source: payload.source, date: payload.date,
+             method: payload.method, memberId: member, note: note.trim() || undefined,
+           };
+           await apiFetch(isEdit ? `/incomes/${incomeId}` : `/incomes`, {
+             method: isEdit ? "PUT" : "POST",
+             token: u.token,
+             sheetId: sid || undefined,
+             body: JSON.stringify(body),
+           });
+        }
+      } catch (e) {
+         // Silently fail API
+      }
+
       navigation.goBack();
     } catch (e: unknown) {
       Alert.alert("Error", e instanceof Error ? e.message : "Failed to save");
@@ -148,7 +172,7 @@ export function IncomeFormScreen({ navigation, route }: any) {
           <View style={styles.amountContainer}>
              <Text style={styles.amountLabel}>AMOUNT</Text>
              <View style={styles.amountWrap}>
-               <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.green : COLORS.text3 }]}>₹</Text>
+               <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.green : COLORS.text3 }]}>{currencySymbol}</Text>
                <TextInput
                  style={[styles.amountInput, { color: isValid ? COLORS.text : COLORS.text3 }]}
                  placeholder="0"
@@ -161,7 +185,7 @@ export function IncomeFormScreen({ navigation, route }: any) {
              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
                {[1000, 2000, 5000, 10000, 20000, 50000].map(val => (
                  <TouchableOpacity key={val} style={styles.quickAmtBtn} onPress={() => setAmount(String(val))}>
-                   <Text style={styles.quickAmtText}>₹{val}</Text>
+                   <Text style={styles.quickAmtText}>{currencySymbol}{val}</Text>
                  </TouchableOpacity>
                ))}
              </ScrollView>
@@ -284,7 +308,7 @@ export function IncomeFormScreen({ navigation, route }: any) {
             {saving ? <ActivityIndicator color="#fff" /> : (
                 <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
                     {isValid ? (
-                        `${selectedSource?.icon || "💵"} Add +₹${numAmount} · ${source === "other" ? (customSourceName.trim() || "Custom Source") : selectedSource?.label}`
+                        `${selectedSource?.icon || "💵"} Add +${currencySymbol}${numAmount} · ${source === "other" ? (customSourceName.trim() || "Custom Source") : selectedSource?.label}`
                     ) : "✨ Add Income"}
                 </Text>
             )}

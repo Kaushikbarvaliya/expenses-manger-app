@@ -14,6 +14,7 @@ import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { CATEGORIES, COLORS } from "../constants/design";
+import { useCurrency } from "../context/CurrencyContext";
 
 type Budget = {
   _id: string;
@@ -32,13 +33,6 @@ type Expense = {
 
 const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-function formatINR(amount: number) {
-  try {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `₹${Math.round(amount)}`;
-  }
-}
 
 // Same as Web: Filters expenses that fall inside this budget's period
 function filterExpensesForBudget(expenses: Expense[], budget: Budget) {
@@ -53,6 +47,7 @@ function filterExpensesForBudget(expenses: Expense[], budget: Budget) {
 }
 
 export function BudgetsScreen({ navigation }: any) {
+  const { formatAmount, currencySymbol } = useCurrency();
   const [user, setUser] = useState<StoredUser | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,10 +132,21 @@ export function BudgetsScreen({ navigation }: any) {
           keyExtractor={(item) => item._id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} />}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No tracking goals set</Text>
-              <Text style={styles.emptyText}>Tap “Add” to create your first budget.</Text>
-            </View>
+            !user?.token ? (
+              <View style={styles.guestPlaceholder}>
+                <Text style={styles.guestIcon}>🎯</Text>
+                <Text style={styles.emptyTitle}>Budgets are for members</Text>
+                <Text style={styles.emptyText}>Sign in to set monthly limits, track category spending, and keep your finances on target across all your devices.</Text>
+                <TouchableOpacity style={styles.signinBtn} onPress={() => navigation.navigate("Settings")}>
+                  <Text style={styles.signinBtnText}>Go to Profile</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.empty}>
+                <Text style={styles.emptyTitle}>No tracking goals set</Text>
+                <Text style={styles.emptyText}>Tap “Add” to create your first budget.</Text>
+              </View>
+            )
           }
           renderItem={({ item }) => {
              const periodLabel = item.periodType === "yearly" ? `Year ${item.year}` : `${MONTH_FULL[item.month - 1]} ${item.year}`;
@@ -171,7 +177,7 @@ export function BudgetsScreen({ navigation }: any) {
                             </Text>
                          </View>
                       </View>
-                      <Text style={styles.totalLabel}>Total Budget: {formatINR(total)}</Text>
+                      <Text style={styles.totalLabel}>Total Budget: {formatAmount(total)}</Text>
                    </View>
                    <View style={styles.cardActions}>
                      <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("BudgetForm", { mode: "edit", budgetId: item._id })}>
@@ -186,8 +192,8 @@ export function BudgetsScreen({ navigation }: any) {
                 {/* Main Progress Bar */}
                 <View style={{ marginTop: 16 }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-                       <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.text }}>{formatINR(spent)} spent</Text>
-                       <Text style={{ fontSize: 13, fontWeight: "700", color: isOver ? COLORS.red : COLORS.text3 }}>{isOver ? `${formatINR(Math.abs(remaining))} over` : `${formatINR(remaining)} left`}</Text>
+                       <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.text }}>{formatAmount(spent)} spent</Text>
+                       <Text style={{ fontSize: 13, fontWeight: "700", color: isOver ? COLORS.red : COLORS.text3 }}>{isOver ? `${formatAmount(Math.abs(remaining))} over` : `${formatAmount(remaining)} left`}</Text>
                     </View>
                     <View style={styles.barBackground}>
                       <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: barColor }]} />
@@ -208,7 +214,7 @@ export function BudgetsScreen({ navigation }: any) {
                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
                               <Text style={styles.catLabel}>{catInfo.icon} {catInfo.label}</Text>
                               <Text style={[styles.catValue, catOver && { color: COLORS.red }]}>
-                                 ₹{catSpent} / ₹{catBud.amount}
+                                 {formatAmount(catSpent)} / {formatAmount(catBud.amount)}
                               </Text>
                            </View>
                            <View style={styles.miniBarBg}>
@@ -254,6 +260,31 @@ const styles = StyleSheet.create({
 
   barBackground: { height: 10, backgroundColor: "rgba(0,0,0,0.06)", borderRadius: 5, overflow: "hidden" },
   barFill: { height: "100%", borderRadius: 5 },
+  
+  guestPlaceholder: { 
+    padding: 30, 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    borderColor: COLORS.border, 
+    backgroundColor: COLORS.surface,
+    alignItems: "center",
+    gap: 12,
+    marginTop: 20
+  },
+  guestIcon: { fontSize: 40, marginBottom: 8 },
+  signinBtn: {
+    marginTop: 8,
+    backgroundColor: COLORS.accent,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: "center",
+  },
+  signinBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   
   catSection: { marginTop: 20, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)", paddingTop: 16, gap: 14 },
   catRow: { gap: 0 },
