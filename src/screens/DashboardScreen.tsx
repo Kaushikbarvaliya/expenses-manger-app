@@ -32,6 +32,8 @@ import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { CATEGORIES, INCOME_SOURCES, COLORS } from "../constants/design";
 import { MonthPickerModal } from "../components/MonthPickerModal";
+import { SegmentedControl } from "../components/SegmentedControl";
+import { DatePickerModal } from "../components/DatePickerModal";
 import { useCurrency } from "../context/CurrencyContext";
 
 const { width } = Dimensions.get("window");
@@ -68,6 +70,17 @@ export function DashboardScreen({ navigation }: any) {
   // Date Filtering State
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  const [dateViewMode, setDateViewMode] = useState<'month' | 'year'>('month');
+
+  // Generate months and years for segmented control
+  const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const yearOptions = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - 2 + i).toString());
+  
+  const currentOptions = dateViewMode === 'month' ? monthOptions : yearOptions;
+  const currentSelectedIndex = dateViewMode === 'month' 
+    ? selectedDate.getMonth() 
+    : yearOptions.indexOf(selectedDate.getFullYear().toString());
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -215,9 +228,9 @@ export function DashboardScreen({ navigation }: any) {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.monthSelector} onPress={() => setShowPicker(true)}>
-            <Text style={styles.monthText}>
-              {selectedDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+          <TouchableOpacity style={styles.dateDisplayButton} onPress={() => setShowDatePickerModal(true)}>
+            <Text style={styles.dateDisplayText}>
+              {selectedDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
             </Text>
             <ChevronRight size={14} color="#fff" style={{ transform: [{ rotate: "90deg" }], marginLeft: 4 }} />
           </TouchableOpacity>
@@ -398,6 +411,17 @@ export function DashboardScreen({ navigation }: any) {
         }
       />
 
+      <DatePickerModal
+        visible={showDatePickerModal}
+        onClose={() => setShowDatePickerModal(false)}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        totalIncome={totalIncome}
+        totalExpense={totalExpense}
+        balance={balance}
+        formatAmount={formatAmount}
+      />
+
       <MonthPickerModal
         visible={showPicker}
         selectedDate={selectedDate}
@@ -450,13 +474,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  monthSelector: {
+  dateDisplayButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 20,
+  },
+  dateDisplayText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
   },
   monthText: {
     color: "#fff",
