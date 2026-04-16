@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { View, TouchableOpacity, StyleSheet, Text, Platform, Modal, Pressable, Alert } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Text, Platform } from "react-native";
 import { BlurView } from "expo-blur";
 import { Home, BarChart2, Calendar, Settings, Plus } from "lucide-react-native";
 import { DashboardScreen } from "../screens/DashboardScreen";
@@ -33,27 +33,10 @@ const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
 const Tab = createBottomTabNavigator<TabParamList>();
 
 export function AppTabs({ navigation }: any) {
-  const [showAddMenu, setShowAddMenu] = useState(false);
   const isLoggedIn = useAppSelector((state) => state.transactions.isLoggedIn);
 
   const handleFabPress = () => {
-    if (!isLoggedIn) {
-      Alert.alert(
-        "Sign In Required",
-        "Please sign in or create an account to add transactions.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Sign In", onPress: () => navigation.navigate("Login") },
-        ]
-      );
-      return;
-    }
-    setShowAddMenu(true);
-  };
-
-  const handleAddPress = (type: "Expense" | "Income") => {
-    setShowAddMenu(false);
-    navigation.navigate(type === "Expense" ? "ExpenseForm" : "IncomeForm", { mode: "add" });
+    navigation.navigate("AddTransaction");
   };
 
   return (
@@ -96,37 +79,6 @@ export function AppTabs({ navigation }: any) {
         <Tab.Screen name="Plan" component={BudgetsScreen} />
         <Tab.Screen name="Settings" component={SettingsScreen} />
       </Tab.Navigator>
-
-      <Modal
-        visible={showAddMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAddMenu(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowAddMenu(false)}>
-          <View style={styles.menuContainer}>
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleAddPress("Income")}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: COLORS.green + "20" }]}>
-                <Text style={{fontSize: 24}}>💰</Text>
-              </View>
-              <Text style={styles.menuText}>Add Income</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => handleAddPress("Expense")}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: COLORS.red + "20" }]}>
-                <Text style={{fontSize: 24}}>💸</Text>
-              </View>
-              <Text style={styles.menuText}>Add Expense</Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
     </>
   );
 }
@@ -171,41 +123,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingBottom: 150,
-  },
-  menuContainer: {
-    width: "85%",
-    backgroundColor: "#fff",
-    borderRadius: 28,
-    padding: 24,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-  },
-  menuItem: {
-    alignItems: "center",
-    gap: 12,
-  },
-  menuIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  menuText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: COLORS.text,
   },
 });
 

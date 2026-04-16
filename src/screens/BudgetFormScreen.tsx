@@ -18,7 +18,7 @@ import type { StoredUser } from "../navigation/types";
 const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export function BudgetFormScreen({ navigation, route }: any) {
-  const { mode, budgetId } = route.params || { mode: "add" };
+  const { mode, budgetId } = route.params || { mode: "add", budgetId: null };
   const isEdit = mode === "edit";
 
   const { currencySymbol } = useCurrency();

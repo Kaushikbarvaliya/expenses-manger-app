@@ -14,6 +14,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList, StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getStoredUser, setStoredUser } from "../storage/auth";
+import theme from "../theme/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
@@ -137,47 +138,39 @@ export function RegisterScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f4f4f8" },
-  container: { flex: 1, justifyContent: "center", paddingHorizontal: 16 },
+  safe: theme.COMPONENT_STYLES.safeArea,
+  container: { 
+    ...theme.COMPONENT_STYLES.screen, 
+    justifyContent: "center" 
+  },
   card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    gap: 12,
+    ...theme.COMPONENT_STYLES.cardLarge,
+    gap: theme.SPACING.xl,
   },
-  title: { fontSize: 28, fontWeight: "900", color: "#111827", letterSpacing: -0.4 },
-  subtitle: { fontSize: 14, color: "#4b5563", fontWeight: "600", marginBottom: 10 },
-  field: { gap: 7 },
-  label: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#6b7280",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
+  title: { 
+    ...theme.TYPOGRAPHY.h2,
+    letterSpacing: -0.4 
   },
-  input: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-    backgroundColor: "#f9fafb",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: "#111827",
-    fontWeight: "600",
+  subtitle: { 
+    ...theme.TYPOGRAPHY.body, 
+    marginBottom: theme.SPACING.lg 
   },
+  field: { gap: theme.SPACING.base },
+  label: theme.TYPOGRAPHY.label,
+  input: theme.COMPONENT_STYLES.input,
   primaryButton: {
-    marginTop: 8,
-    borderRadius: 14,
-    backgroundColor: "#7c6aff",
-    paddingVertical: 13,
-    alignItems: "center",
+    ...theme.COMPONENT_STYLES.button,
+    marginTop: theme.SPACING.base,
   },
   primaryButtonDisabled: { opacity: 0.6 },
-  primaryButtonText: { color: "#ffffff", fontWeight: "900", fontSize: 15 },
-  linkButton: { paddingVertical: 10, alignItems: "center" },
-  linkText: { color: "#6655ee", fontWeight: "900", fontSize: 13 },
+  primaryButtonText: theme.TYPOGRAPHY.button,
+  linkButton: { 
+    paddingVertical: theme.SPACING.lg, 
+    alignItems: "center" 
+  },
+  linkText: { 
+    ...theme.TYPOGRAPHY.link,
+    fontSize: theme.FONTS.size.sm 
+  },
 });
 

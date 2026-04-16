@@ -10,11 +10,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Plus, ChevronRight } from "lucide-react-native";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { CATEGORIES, COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
+import { BudgetCard } from "../components/BudgetCard";
 
 type Budget = {
   _id: string;
@@ -95,32 +97,43 @@ export function BudgetsScreen({ navigation }: any) {
 
   const deleteBudget = async (id: string) => {
     if (!user?.token) return;
-    Alert.alert("Delete Budget?", "Cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await apiFetch<{ message: string }>(`/budgets/${id}`, {
-              method: "DELETE",
-              token: user.token,
-              sheetId: sheetId || undefined,
-            });
-            setBudgets((prev) => prev.filter((b) => b._id !== id));
-          } catch (e: unknown) {
-            Alert.alert("Delete failed", e instanceof Error ? e.message : "Error");
-          }
-        },
-      },
-    ]);
+    try {
+      await apiFetch<{ message: string }>(`/budgets/${id}`, {
+        method: "DELETE",
+        token: user.token,
+        sheetId: sheetId || undefined,
+      });
+      setBudgets((prev) => prev.filter((b) => b._id !== id));
+    } catch (e: unknown) {
+      Alert.alert("Delete failed", e instanceof Error ? e.message : "Error");
+    }
+  };
+
+  const handleEditBudget = (budget: Budget) => {
+    navigation.navigate("BudgetForm", { mode: "edit", budgetId: budget._id });
+  };
+
+  const handleDeleteBudget = (budgetId: string) => {
+    deleteBudget(budgetId);
+  };
+
+  const handleAddBudget = () => {
+    navigation.navigate("BudgetForm", { mode: "add" });
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.title}>Budgets & Goals</Text>
-        <Text style={styles.subtitle}>Set period limits to track your spending.</Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.title}>Budgets & Goals</Text>
+            <Text style={styles.subtitle}>Set period limits to track your spending.</Text>
+          </View>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddBudget}>
+            <Plus size={20} color={COLORS.primary} strokeWidth={2.5} />
+            <Text style={styles.addButtonText}>Add Budget</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -148,86 +161,14 @@ export function BudgetsScreen({ navigation }: any) {
               </View>
             )
           }
-          renderItem={({ item }) => {
-             const periodLabel = item.periodType === "yearly" ? `Year ${item.year}` : `${MONTH_FULL[item.month - 1]} ${item.year}`;
-             const periodIcon = item.periodType === "yearly" ? "📆" : "📅";
-             
-             const scopedExp = filterExpensesForBudget(expenses, item);
-             const spent = scopedExp.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-             const total = Number(item.totalBudget) || 0;
-             const remaining = total - spent;
-             const rawPct = total > 0 ? (spent / total) * 100 : 0;
-             const pct = Math.min(100, Math.max(0, rawPct));
-             const isOver = remaining < 0;
-             
-             let barColor = COLORS.green;
-             if (pct >= 100) barColor = COLORS.red;
-             else if (pct >= 80) barColor = COLORS.amber;
-
-            return (
-              <View style={styles.card}>
-                <View style={styles.cardHeaderRow}>
-                   <View>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                         <Text style={{ fontSize: 16 }}>{periodIcon}</Text>
-                         <Text style={styles.periodLabel}>{periodLabel}</Text>
-                         <View style={[styles.badge, { backgroundColor: item.periodType === "yearly" ? "rgba(124,106,255,0.12)" : "rgba(52,211,153,0.12)" }]}>
-                            <Text style={[styles.badgeText, { color: item.periodType === "yearly" ? COLORS.accent2 : COLORS.green }]}>
-                               {item.periodType === "yearly" ? "Yearly" : "Monthly"}
-                            </Text>
-                         </View>
-                      </View>
-                      <Text style={styles.totalLabel}>Total Budget: {formatAmount(total)}</Text>
-                   </View>
-                   <View style={styles.cardActions}>
-                     <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate("BudgetForm", { mode: "edit", budgetId: item._id })}>
-                        <Text style={{ fontSize: 12 }}>✏️</Text>
-                     </TouchableOpacity>
-                     <TouchableOpacity style={[styles.iconBtn, styles.deleteBtn]} onPress={() => void deleteBudget(item._id)}>
-                        <Text style={{ fontSize: 12 }}>🗑️</Text>
-                     </TouchableOpacity>
-                   </View>
-                </View>
-
-                {/* Main Progress Bar */}
-                <View style={{ marginTop: 16 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-                       <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.text }}>{formatAmount(spent)} spent</Text>
-                       <Text style={{ fontSize: 13, fontWeight: "700", color: isOver ? COLORS.red : COLORS.text3 }}>{isOver ? `${formatAmount(Math.abs(remaining))} over` : `${formatAmount(remaining)} left`}</Text>
-                    </View>
-                    <View style={styles.barBackground}>
-                      <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: barColor }]} />
-                    </View>
-                </View>
-
-                {/* Category Breakdown */}
-                {item.categories && item.categories.some(c => c.amount > 0) && (
-                  <View style={styles.catSection}>
-                    {item.categories.filter(c => c.amount > 0).map((catBud) => {
-                      const catInfo = CATEGORIES.find(c => c.id === catBud.category) || CATEGORIES[CATEGORIES.length - 1];
-                      const catSpent = scopedExp.filter(e => e.category === catBud.category).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-                      const catPct = Math.min(100, Math.max(0, (catSpent / catBud.amount) * 100));
-                      const catOver = catSpent > catBud.amount;
-
-                      return (
-                        <View key={catBud.category} style={styles.catRow}>
-                           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                              <Text style={styles.catLabel}>{catInfo.icon} {catInfo.label}</Text>
-                              <Text style={[styles.catValue, catOver && { color: COLORS.red }]}>
-                                 {formatAmount(catSpent)} / {formatAmount(catBud.amount)}
-                              </Text>
-                           </View>
-                           <View style={styles.miniBarBg}>
-                              <View style={[styles.miniBarFill, { width: `${catPct}%`, backgroundColor: catOver ? COLORS.red : COLORS.accent }]} />
-                           </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
-            );
-          }}
+          renderItem={({ item }) => (
+            <BudgetCard
+              budget={item}
+              expenses={expenses}
+              onEdit={handleEditBudget}
+              onDelete={handleDeleteBudget}
+            />
+          )}
         />
       )}
     </SafeAreaView>
@@ -237,8 +178,29 @@ export function BudgetsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
   title: { fontSize: 28, fontWeight: "900", color: COLORS.text },
   subtitle: { fontSize: 13, fontWeight: "800", color: COLORS.text3, marginTop: 4 },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(124, 106, 255, 0.1)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(124, 106, 255, 0.2)",
+  },
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
   center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 8 },
   centerText: { color: COLORS.text3, fontWeight: "800" },
   list: { paddingHorizontal: 16, paddingBottom: 100, gap: 12 },
@@ -246,20 +208,6 @@ const styles = StyleSheet.create({
   empty: { padding: 18, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
   emptyTitle: { fontSize: 16, fontWeight: "900", color: COLORS.text },
   emptyText: { fontSize: 13, fontWeight: "700", color: COLORS.text3, marginTop: 4 },
-  
-  card: { borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface, padding: 16 },
-  cardHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  periodLabel: { fontSize: 16, fontWeight: "800", color: COLORS.text },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
-  totalLabel: { fontSize: 12, fontWeight: "600", color: COLORS.text3 },
-  
-  cardActions: { flexDirection: "row", gap: 6 },
-  iconBtn: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface2, alignItems: "center", justifyContent: "center" },
-  deleteBtn: { borderColor: "rgba(220,38,38,0.2)", backgroundColor: "rgba(220,38,38,0.05)" },
-
-  barBackground: { height: 10, backgroundColor: "rgba(0,0,0,0.06)", borderRadius: 5, overflow: "hidden" },
-  barFill: { height: "100%", borderRadius: 5 },
   
   guestPlaceholder: { 
     padding: 30, 
@@ -285,12 +233,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
   },
-  
-  catSection: { marginTop: 20, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)", paddingTop: 16, gap: 14 },
-  catRow: { gap: 0 },
-  catLabel: { fontSize: 13, fontWeight: "800", color: COLORS.text2 },
-  catValue: { fontSize: 12, fontWeight: "700", color: COLORS.text3 },
-  miniBarBg: { height: 6, backgroundColor: "rgba(0,0,0,0.04)", borderRadius: 3, overflow: "hidden" },
-  miniBarFill: { height: "100%", borderRadius: 3 },
-  
 });

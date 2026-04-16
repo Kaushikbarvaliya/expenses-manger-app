@@ -25,13 +25,15 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   ChangePassword: { step?: 1 | 2 } | undefined;
   ExpenseForm: { mode: "add" } | { mode: "edit"; expenseId: string };
-  BudgetForm: undefined;
+  BudgetForm: { mode: "add" } | { mode: "edit"; budgetId: string };
   IncomeForm: { mode: "add" } | { mode: "edit"; incomeId: string };
+  AddTransaction: { mode: "add" } | { mode: "edit"; id: string; type: "expense" | "income" };
 };
 
 export type TabParamList = {
   Home: undefined;
   Report: undefined;
+  AddPlaceholder: undefined;
   Plan: undefined;
   Settings: undefined;
 };

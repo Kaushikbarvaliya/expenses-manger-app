@@ -22,8 +22,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList, SheetSummary } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { clearStoredUser, getStoredUser, setActiveSheetId } from "../storage/auth";
-import { COLORS } from "../constants/design";
 import { useAppDispatch } from "../store/hooks";
+import theme from "../theme/theme";
 import { logout, setLoggedIn } from "../store/slices/transactionSlice";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Sheets">;
@@ -216,7 +216,7 @@ export function SheetsScreen({ navigation, route }: Props) {
                 onPress={() => openInvite(sheet)}
                 disabled={disabled}
               >
-                <UserPlus size={16} color={COLORS.primary} strokeWidth={2.5} />
+                <UserPlus size={16} color={theme.COLORS.primary} strokeWidth={2.5} />
                 <Text style={styles.inviteBtnText}>Invite</Text>
               </TouchableOpacity>
             )}
@@ -381,7 +381,7 @@ export function SheetsScreen({ navigation, route }: Props) {
                     <View style={styles.modalHeader}>
                       <Text style={styles.modalTitle}>Invite Member</Text>
                       <TouchableOpacity onPress={() => setShowInviteModal(false)} style={styles.closeBtn}>
-                        <X size={20} color={COLORS.text2} />
+                        <X size={20} color={theme.COLORS.text2} />
                       </TouchableOpacity>
                     </View>
 
@@ -445,7 +445,7 @@ export function SheetsScreen({ navigation, route }: Props) {
                         <View style={styles.linkDisplayBox}>
                           <Text style={styles.linkDisplayText} numberOfLines={1}>{inviteLink}</Text>
                           <TouchableOpacity onPress={() => copyToClipboard(inviteLink)}>
-                            <Copy size={16} color={COLORS.primary} strokeWidth={2.5} />
+                            <Copy size={16} color={theme.COLORS.primary} strokeWidth={2.5} />
                           </TouchableOpacity>
                         </View>
                         <TouchableOpacity style={styles.shareRowBtn} onPress={() => void shareLink(inviteLink)}>
@@ -466,167 +466,206 @@ export function SheetsScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f4f4f8" },
+  safe: theme.COMPONENT_STYLES.safeArea,
   page: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 28,
-    gap: 18,
+    ...theme.COMPONENT_STYLES.screen,
+    paddingTop: theme.SPACING["4xl"],
+    paddingBottom: theme.SPACING["5xl"],
+    gap: theme.SPACING["4xl"],
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
+    gap: theme.SPACING.lg,
     flexWrap: "wrap",
-    marginBottom: 18,
+    marginBottom: theme.SPACING["4xl"],
   },
   eyebrowPill: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(124,106,255,0.12)",
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginBottom: 10,
+    backgroundColor: theme.COLORS.primaryBackground,
+    borderRadius: theme.BORDER_RADIUS.full,
+    paddingVertical: theme.SPACING.base,
+    paddingHorizontal: theme.SPACING.xl,
+    marginBottom: theme.SPACING.lg,
   },
   eyebrowText: {
-    color: "#6655ee",
-    fontSize: 12,
-    fontWeight: "800",
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.primary,
+    fontWeight: theme.FONTS.weight.black,
     letterSpacing: 0.7,
-    textTransform: "uppercase",
   },
-  title: { fontSize: 32, fontWeight: "900", color: "#111827", letterSpacing: -0.6 },
-  subtitle: { marginTop: 8, fontSize: 14, lineHeight: 20, color: "#4b5563", maxWidth: 520 },
+  title: { 
+    ...theme.TYPOGRAPHY.h1,
+    letterSpacing: -0.6 
+  },
+  subtitle: { 
+    ...theme.TYPOGRAPHY.body,
+    marginTop: theme.SPACING.base, 
+    maxWidth: 520 
+  },
   secondaryButton: {
-    borderRadius: 12,
+    ...theme.COMPONENT_STYLES.buttonGhost,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
-    backgroundColor: "#ffffff",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    borderColor: theme.COLORS.border,
+    backgroundColor: theme.COLORS.surface,
+    paddingVertical: theme.SPACING.lg,
+    paddingHorizontal: theme.SPACING.xl,
   },
-  secondaryButtonText: { fontSize: 14, fontWeight: "700", color: "#111827" },
+  secondaryButtonText: { 
+    ...theme.TYPOGRAPHY.buttonText,
+    color: theme.COLORS.text 
+  },
 
   successBanner: {
-    borderRadius: 14,
-    backgroundColor: "rgba(5,150,105,0.08)",
+    ...theme.COMPONENT_STYLES.card,
+    backgroundColor: `${theme.COLORS.success}15`,
     borderWidth: 1,
-    borderColor: "rgba(5,150,105,0.18)",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 12,
+    borderColor: `${theme.COLORS.success}30`,
+    marginBottom: theme.SPACING.xl,
   },
-  successBannerText: { fontSize: 13, fontWeight: "700", color: "#047857", lineHeight: 18 },
+  successBannerText: { 
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.success,
+    fontWeight: theme.FONTS.weight.black,
+    lineHeight: 18 
+  },
   errorBanner: {
-    borderRadius: 14,
-    backgroundColor: "rgba(220,38,38,0.08)",
+    ...theme.COMPONENT_STYLES.card,
+    backgroundColor: `${theme.COLORS.error}15`,
     borderWidth: 1,
-    borderColor: "rgba(220,38,38,0.18)",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 12,
+    borderColor: `${theme.COLORS.error}30`,
+    marginBottom: theme.SPACING.xl,
   },
-  errorBannerText: { fontSize: 13, fontWeight: "700", color: "#b91c1c", lineHeight: 18 },
+  errorBannerText: { 
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.error,
+    fontWeight: theme.FONTS.weight.black,
+    lineHeight: 18 
+  },
 
   createCard: {
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    borderRadius: 22,
-    padding: 16,
-    gap: 14,
+    ...theme.COMPONENT_STYLES.card,
+    borderRadius: theme.BORDER_RADIUS["5xl"],
+    gap: theme.SPACING.xl,
   },
-  createTitle: { fontSize: 15, fontWeight: "900", color: "#111827" },
-  createSubtitle: { marginTop: 6, fontSize: 13, color: "#6b7280", lineHeight: 18 },
-  createActions: { gap: 10 },
+  createTitle: { ...theme.TYPOGRAPHY.cardTitle },
+  createSubtitle: { 
+    ...theme.TYPOGRAPHY.cardSubtitle,
+    marginTop: theme.SPACING.base,
+    lineHeight: 18 
+  },
+  createActions: { gap: theme.SPACING.lg },
   createInput: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    backgroundColor: "#f9fafb",
-    color: "#111827",
+    ...theme.COMPONENT_STYLES.input,
+    fontSize: theme.FONTS.size.base,
   },
   createButton: {
-    borderRadius: 12,
-    backgroundColor: "#7c6aff",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: "center",
+    ...theme.COMPONENT_STYLES.button,
+    paddingVertical: theme.SPACING["3xl"],
+    paddingHorizontal: theme.SPACING["3xl"],
   },
   createButtonDisabled: { opacity: 0.55 },
-  createButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "900" },
+  createButtonText: theme.TYPOGRAPHY.buttonText,
 
   loadingCard: {
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    borderRadius: 22,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+    ...theme.COMPONENT_STYLES.card,
+    borderRadius: theme.BORDER_RADIUS["5xl"],
+    paddingVertical: theme.SPACING["4xl"],
+    paddingHorizontal: theme.SPACING["3xl"],
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginTop: 4,
+    gap: theme.SPACING.xl,
   },
-  loadingText: { fontSize: 14, color: "#4b5563", fontWeight: "700" },
+  loadingText: { 
+    ...theme.TYPOGRAPHY.body,
+    fontWeight: theme.FONTS.weight.medium 
+  },
 
-  section: {
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    borderRadius: 24,
-    padding: 16,
-    gap: 12,
+  list: { gap: theme.SPACING.xl },
+  sheetCard: {
+    ...theme.COMPONENT_STYLES.card,
+    borderRadius: theme.BORDER_RADIUS["5xl"],
+    gap: theme.SPACING["3xl"],
   },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: "900", color: "#111827" },
+  sectionHeader: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "space-between", 
+    gap: theme.SPACING.base 
+  },
+  sectionTitle: { 
+    ...theme.TYPOGRAPHY.h3,
+    color: theme.COLORS.text 
+  },
   sectionMetaPill: {
-    backgroundColor: "#f3f4f6",
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    backgroundColor: theme.COLORS.surface2,
+    borderRadius: theme.BORDER_RADIUS.full,
+    paddingVertical: theme.SPACING.xs,
+    paddingHorizontal: theme.SPACING.sm,
   },
-  sectionMetaText: { fontSize: 12, fontWeight: "900", color: "#6b7280" },
+  sectionMetaText: { 
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.text2 
+  },
 
   emptyState: {
-    borderRadius: 16,
-    borderWidth: 1,
+    ...theme.COMPONENT_STYLES.card,
     borderStyle: "dashed",
-    borderColor: "rgba(0,0,0,0.12)",
-    backgroundColor: "#fafafa",
-    padding: 16,
+    backgroundColor: theme.COLORS.background,
+    padding: theme.SPACING.lg,
   },
-  emptyStateText: { fontSize: 13, color: "#6b7280", lineHeight: 18, fontWeight: "700" },
-
-  sheetCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
-    backgroundColor: "#fbfbff",
-    padding: 16,
-    gap: 12,
+  emptyStateText: { 
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.text2,
+    lineHeight: 18 
   },
   sheetCardDisabled: { opacity: 0.7 },
-  sheetCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
-  sheetTitle: { fontSize: 16, fontWeight: "900", color: "#111827" },
-  sheetMeta: { marginTop: 4, fontSize: 13, color: "#6b7280", fontWeight: "600" },
+  sheetCardTop: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "flex-start", 
+    gap: theme.SPACING.lg 
+  },
+  sheetTitle: { 
+    ...theme.TYPOGRAPHY.cardTitle,
+    fontSize: theme.FONTS.size.lg 
+  },
+  sheetMeta: { 
+    marginTop: theme.SPACING.xs, 
+    ...theme.TYPOGRAPHY.caption,
+    fontWeight: theme.FONTS.weight.semibold 
+  },
   roleBadge: {
-    borderRadius: 999,
-    backgroundColor: "rgba(124,106,255,0.12)",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    borderRadius: theme.BORDER_RADIUS.full,
+    backgroundColor: theme.COLORS.primaryBackground,
+    paddingVertical: theme.SPACING.xs,
+    paddingHorizontal: theme.SPACING.sm,
     alignSelf: "flex-start",
   },
-  roleBadgeText: { fontSize: 12, fontWeight: "900", color: "#6655ee" },
-  ownerBadge: { backgroundColor: "rgba(5,150,105,0.12)" },
-  ownerBadgeText: { color: "#047857" },
-  sheetCardBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 10 },
-  sheetHint: { flex: 1, fontSize: 13, lineHeight: 18, color: "#4b5563", fontWeight: "600" },
-  openLabel: { fontSize: 13, fontWeight: "900", color: "#111827" },
+  roleBadgeText: { 
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.primary,
+    fontWeight: theme.FONTS.weight.black 
+  },
+  ownerBadge: { backgroundColor: `${theme.COLORS.success}15` },
+  ownerBadgeText: { color: theme.COLORS.success },
+  sheetCardBottom: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "flex-end", 
+    gap: theme.SPACING.sm 
+  },
+  sheetHint: { 
+    flex: 1, 
+    ...theme.TYPOGRAPHY.caption,
+    lineHeight: 18,
+    fontWeight: theme.FONTS.weight.semibold 
+  },
+  openLabel: { 
+    ...theme.TYPOGRAPHY.caption,
+    fontWeight: theme.FONTS.weight.black 
+  },
 
   // New Invite Styles
   headerActions: {
@@ -638,10 +677,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: COLORS.primary,
+    backgroundColor: theme.COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: COLORS.primary,
+    shadowColor: theme.COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -656,17 +695,17 @@ const styles = StyleSheet.create({
     flexDirection: "row", 
     alignItems: "center", 
     gap: 6,
-    backgroundColor: COLORS.primary + "15",
+    backgroundColor: theme.COLORS.primary + "15",
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.primary + "30",
+    borderColor: theme.COLORS.primary + "30",
   },
   inviteBtnText: { 
     fontSize: 12, 
     fontWeight: "800", 
-    color: COLORS.primary 
+    color: theme.COLORS.primary 
   },
 
   // Modal Styles
@@ -679,167 +718,153 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   modalInner: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    padding: 24,
-    paddingBottom: Platform.OS === "ios" ? 44 : 24,
+    backgroundColor: theme.COLORS.surface,
+    borderTopLeftRadius: theme.BORDER_RADIUS["3xl"],
+    borderTopRightRadius: theme.BORDER_RADIUS["3xl"],
+    padding: theme.SPACING.xl,
+    paddingBottom: Platform.OS === "ios" ? theme.SPACING["3xl"] : theme.SPACING.xl,
   },
   modalHandle: {
     width: 40,
     height: 4,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 2,
+    backgroundColor: theme.COLORS.border,
+    borderRadius: theme.BORDER_RADIUS.xs,
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: theme.SPACING.lg,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: theme.SPACING.xl,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: COLORS.text,
+    ...theme.TYPOGRAPHY.h2,
+    color: theme.COLORS.text,
     letterSpacing: -0.5,
   },
   closeBtn: {
-    padding: 4,
+    padding: theme.SPACING.xs,
   },
   inputLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: COLORS.text3,
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.text3,
     textTransform: "uppercase",
-    marginBottom: 8,
+    marginBottom: theme.SPACING.sm,
     letterSpacing: 0.5,
   },
   modalInput: {
-    backgroundColor: "#F8F9FE",
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 14,
-    fontSize: 15,
-    color: COLORS.text,
-    fontWeight: "600",
-    marginBottom: 20,
+    ...theme.COMPONENT_STYLES.input,
+    backgroundColor: theme.COLORS.background,
+    fontSize: theme.FONTS.size.base,
+    color: theme.COLORS.text,
+    fontWeight: theme.FONTS.weight.semibold,
+    marginBottom: theme.SPACING.xl,
   },
   roleGrid: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 25,
+    gap: theme.SPACING.lg,
+    marginBottom: theme.SPACING.xl,
   },
   roleOption: {
     flex: 1,
-    backgroundColor: "#F8F9FE",
-    borderRadius: 12,
+    backgroundColor: theme.COLORS.background,
+    borderRadius: theme.BORDER_RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 12,
+    borderColor: theme.COLORS.border,
+    paddingVertical: theme.SPACING.lg,
     alignItems: "center",
   },
   roleOptionActive: {
-    backgroundColor: COLORS.primary + "10",
-    borderColor: COLORS.primary,
+    backgroundColor: theme.COLORS.primary + "10",
+    borderColor: theme.COLORS.primary,
   },
   roleOptionText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.text2,
+    ...theme.TYPOGRAPHY.caption,
+    fontWeight: theme.FONTS.weight.bold,
+    color: theme.COLORS.text2,
   },
   roleOptionTextActive: {
-    color: COLORS.primary,
+    color: theme.COLORS.primary,
   },
   modalActionBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 15,
-    paddingVertical: 16,
-    alignItems: "center",
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 5,
+    ...theme.COMPONENT_STYLES.button,
+    paddingVertical: theme.SPACING.xl,
+    ...theme.SHADOWS.md,
   },
   modalActionBtnDisabled: {
     opacity: 0.5,
   },
   modalActionBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "800",
+    ...theme.TYPOGRAPHY.buttonText,
   },
   linkShareSection: {
-    marginTop: 25,
-    backgroundColor: COLORS.primary + "05",
-    borderRadius: 20,
-    padding: 16,
+    marginTop: theme.SPACING.xl,
+    backgroundColor: theme.COLORS.primary + "05",
+    borderRadius: theme.BORDER_RADIUS["2xl"],
+    padding: theme.SPACING.lg,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: COLORS.primary + "30",
+    borderColor: theme.COLORS.primary + "30",
   },
   linkShareTitle: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: COLORS.primary,
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.primary,
     textTransform: "uppercase",
-    marginBottom: 10,
+    fontWeight: theme.FONTS.weight.black,
+    marginBottom: theme.SPACING.sm,
   },
   linkDisplayBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: theme.COLORS.surface,
+    borderRadius: theme.BORDER_RADIUS.lg,
+    padding: theme.SPACING.lg,
+    marginBottom: theme.SPACING.lg,
   },
   linkDisplayText: {
     flex: 1,
-    fontSize: 13,
-    color: COLORS.text2,
-    marginRight: 10,
+    ...theme.TYPOGRAPHY.caption,
+    color: theme.COLORS.text2,
+    marginRight: theme.SPACING.sm,
   },
   shareRowBtn: {
+    ...theme.COMPONENT_STYLES.button,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 10,
+    gap: theme.SPACING.sm,
+    paddingVertical: theme.SPACING.sm,
+    paddingHorizontal: theme.SPACING.lg,
   },
   shareRowBtnText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "700",
+    ...theme.TYPOGRAPHY.buttonText,
+    fontSize: theme.FONTS.size.sm,
   },
   
   // Sheet Selector Styles
   sheetSelectorScroll: {
-    gap: 10,
-    paddingVertical: 5,
+    gap: theme.SPACING.sm,
+    paddingVertical: theme.SPACING.xs,
   },
   sheetSelectorChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: COLORS.surface2,
+    paddingVertical: theme.SPACING.sm,
+    paddingHorizontal: theme.SPACING.lg,
+    borderRadius: theme.BORDER_RADIUS.lg,
+    backgroundColor: theme.COLORS.surface2,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: theme.COLORS.border,
   },
   sheetSelectorChipActive: {
-    backgroundColor: COLORS.primary + "15",
-    borderColor: COLORS.primary,
+    backgroundColor: theme.COLORS.primary + "15",
+    borderColor: theme.COLORS.primary,
   },
   sheetSelectorChipText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.text2,
+    ...theme.TYPOGRAPHY.caption,
+    fontWeight: theme.FONTS.weight.bold,
+    color: theme.COLORS.text2,
   },
   sheetSelectorChipTextActive: {
-    color: COLORS.primary,
+    color: theme.COLORS.primary,
   },
 });

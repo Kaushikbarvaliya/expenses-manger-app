@@ -22,7 +22,10 @@ import {
   Clock,
   ChevronRight,
   User,
-  Briefcase
+  Briefcase,
+  MoreVertical,
+  Edit2,
+  Trash2
 } from "lucide-react-native";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
@@ -34,7 +37,7 @@ import { useCurrency } from "../context/CurrencyContext";
 const { width } = Dimensions.get("window");
 
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectActiveTransactions, setLoggedIn, setTransactions } from "../store/slices/transactionSlice";
+import { selectActiveTransactions, setLoggedIn, setTransactions, deleteTransaction } from "../store/slices/transactionSlice";
 import type { Expense, Income, Transaction } from "../types";
 
 
@@ -57,6 +60,8 @@ export function DashboardScreen({ navigation }: any) {
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [showOptions, setShowOptions] = useState<string | null>(null);
   
   const { expenses, incomes } = useAppSelector(selectActiveTransactions);
 
@@ -77,25 +82,28 @@ export function DashboardScreen({ navigation }: any) {
   }, [dispatch, navigation]);
 
   const loadData = useCallback(async (isRefresh = false) => {
-    if (!user?.token) return;
     if (isRefresh) setRefreshing(true);
-    try {
-      const [expRes, incRes] = await Promise.all([
-        apiFetch<Omit<Expense, "type">[]>("/expenses", { token: user.token, sheetId: sheetId || undefined }),
-        apiFetch<Omit<Income, "type">[]>("/incomes", { token: user.token, sheetId: sheetId || undefined }),
-      ]);
-      const mappedExp: Expense[] = (Array.isArray(expRes) ? expRes : []).map(e => ({ ...e, type: "expense" as const }));
-      const mappedInc: Income[] = (Array.isArray(incRes) ? incRes : []).map(i => ({ ...i, type: "income" as const }));
-      
-      // Merge with offline redux, or replace completely?
-      // Since it's offline local persistence primarily, we update Redux store.
-      // Make sure we only set if data differs largely or we dispatch a set method.
-      dispatch(setTransactions({ expenses: mappedExp, incomes: mappedInc }));
-    } catch (e: unknown) {
-      console.log("Failed API sync, sticking to offline data if any.", e);
-    } finally {
-      if (isRefresh) setRefreshing(false);
+    
+    // If user is logged in, fetch data from API
+    if (user?.token) {
+      try {
+        const [expRes, incRes] = await Promise.all([
+          apiFetch<Omit<Expense, "type">[]>("/expenses", { token: user.token, sheetId: sheetId || undefined }),
+          apiFetch<Omit<Income, "type">[]>("/incomes", { token: user.token, sheetId: sheetId || undefined }),
+        ]);
+        const mappedExp: Expense[] = (Array.isArray(expRes) ? expRes : []).map(e => ({ ...e, type: "expense" as const }));
+        const mappedInc: Income[] = (Array.isArray(incRes) ? incRes : []).map(i => ({ ...i, type: "income" as const }));
+        
+        // Update Redux store with API data
+        dispatch(setTransactions({ expenses: mappedExp, incomes: mappedInc }));
+      } catch (e: unknown) {
+        console.log("Failed API sync, sticking to offline data if any.", e);
+      }
     }
+    // If user is not logged in, we don't need to fetch from API
+    // The guest data will be automatically available from Redux state
+    
+    if (isRefresh) setRefreshing(false);
   }, [sheetId, user?.token, dispatch]);
 
   useEffect(() => {
@@ -147,6 +155,48 @@ export function DashboardScreen({ navigation }: any) {
     }
   };
 
+  const handleDelete = async (transaction: Transaction) => {
+    Alert.alert(
+      "Delete Transaction",
+      `Are you sure you want to delete this ${transaction.type}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Delete from Redux store
+              dispatch(deleteTransaction({ id: transaction._id, type: transaction.type }));
+
+              // Try to delete from API if user is logged in
+              if (user?.token) {
+                try {
+                  const endpoint = transaction.type === "expense" ? "/expenses" : "/incomes";
+                  await apiFetch(`${endpoint}/${transaction._id}`, {
+                    method: "DELETE",
+                    token: user.token,
+                    sheetId: sheetId || undefined,
+                  });
+                } catch (apiError) {
+                  console.log("Failed to delete from API, but local state updated");
+                }
+              }
+
+              // Refresh data
+              await loadData(false);
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete transaction");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderHeader = () => (
     <LinearGradient
       colors={["#7C3AED", "#A78BFA"]}
@@ -186,6 +236,12 @@ export function DashboardScreen({ navigation }: any) {
               {balance >= 0 ? "+" : ""}{formatAmount(balance)} for this period
             </Text>
           </View>
+          {!user?.token && (
+            <View style={styles.guestModeBadge}>
+              <Text style={styles.guestModeText}>Guest Mode</Text>
+              <Text style={styles.guestModeSubtext}>Login to sync your data</Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </LinearGradient>
@@ -272,35 +328,67 @@ export function DashboardScreen({ navigation }: any) {
             : INCOME_SOURCES.find(s => s.id === (item as Income).source) || INCOME_SOURCES[INCOME_SOURCES.length - 1];
 
           return (
-            <TouchableOpacity
-              style={styles.transCard}
-              onPress={() => navigation.navigate(isExp ? "ExpenseForm" : "IncomeForm", { mode: "edit", id: item._id })}
-            >
-              <View style={[styles.transIcon, { backgroundColor: meta.color + "15" }]}>
-                <Text style={{ fontSize: 20 }}>{meta.icon}</Text>
-              </View>
-              <View style={styles.transDetails}>
-                <Text style={styles.transTitle}>{meta.label}</Text>
-                <View style={styles.transMeta}>
-                  <Text style={styles.transSubtitle} numberOfLines={1}>
-                    {item.name || meta.label}
-                  </Text>
-                  <Text style={styles.transDot}>·</Text>
-                  <Text style={styles.transDate}>{formatDate(item.date)}</Text>
+            <View style={styles.transCard}>
+              <TouchableOpacity
+                style={styles.transMainContent}
+                onPress={() => navigation.navigate("AddTransaction", { mode: "edit", id: item._id, type: item.type })}
+              >
+                <View style={[styles.transIcon, { backgroundColor: meta.color + "15" }]}>
+                  <Text style={{ fontSize: 20 }}>{meta.icon}</Text>
                 </View>
-              </View>
-              <View style={styles.transAmountContainer}>
-                <Text style={[styles.transAmount, { color: isExp ? COLORS.red : COLORS.green }]}>
-                  {isExp ? "-" : "+"}{formatAmount(item.amount)}
-                </Text>
-                {isExp && (item as Expense).method === "card" && (
-                  <View style={styles.methodBadge}>
-                    <CreditCard size={10} color={COLORS.text3} />
-                    <Text style={styles.methodText}>Card</Text>
+                <View style={styles.transDetails}>
+                  <Text style={styles.transTitle}>{meta.label}</Text>
+                  <View style={styles.transMeta}>
+                    <Text style={styles.transSubtitle} numberOfLines={1}>
+                      {item.name || meta.label}
+                    </Text>
+                    <Text style={styles.transDot}>·</Text>
+                    <Text style={styles.transDate}>{formatDate(item.date)}</Text>
                   </View>
-                )}
-              </View>
-            </TouchableOpacity>
+                </View>
+                <View style={styles.transAmountContainer}>
+                  <Text style={[styles.transAmount, { color: isExp ? COLORS.red : COLORS.green }]}>
+                    {isExp ? "-" : "+"}{formatAmount(item.amount)}
+                  </Text>
+                  {isExp && (item as Expense).method === "card" && (
+                    <View style={styles.methodBadge}>
+                      <CreditCard size={10} color={COLORS.text3} />
+                      <Text style={styles.methodText}>Card</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.optionsButton}
+                onPress={() => setShowOptions(showOptions === item._id ? null : item._id)}
+              >
+                <MoreVertical size={20} color={COLORS.text3} />
+              </TouchableOpacity>
+              {showOptions === item._id && (
+                <View style={styles.optionsMenu}>
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => {
+                      setShowOptions(null);
+                      navigation.navigate("AddTransaction", { mode: "edit", id: item._id, type: item.type });
+                    }}
+                  >
+                    <Edit2 size={16} color={COLORS.text} />
+                    <Text style={styles.optionText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.optionItem, styles.deleteOption]}
+                    onPress={() => {
+                      setShowOptions(null);
+                      handleDelete(item);
+                    }}
+                  >
+                    <Trash2 size={16} color={COLORS.red} />
+                    <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           );
         }}
         ListEmptyComponent={
@@ -631,6 +719,68 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#9CA3AF",
     fontSize: 14,
+  },
+  guestModeBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 8,
+    alignItems: "center",
+  },
+  guestModeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  guestModeSubtext: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 10,
+    marginTop: 2,
+  },
+  transMainContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  optionsButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface2,
+    marginLeft: 8,
+  },
+  optionsMenu: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+    zIndex: 10,
+  },
+  optionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  deleteOption: {
+    backgroundColor: COLORS.red + "10",
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  deleteText: {
+    color: COLORS.red,
   },
 });
 ;

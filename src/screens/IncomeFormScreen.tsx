@@ -19,6 +19,7 @@ import { addTransaction, updateTransaction, selectActiveTransactions } from "../
 import type { Income } from "../types";
 import { INCOME_SOURCES, COLORS, PAYMENT_METHODS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
+import { generateUUID } from "../utils/uuid";
 
 export function IncomeFormScreen({ navigation, route }: any) {
   const { currencySymbol } = useCurrency();
@@ -102,7 +103,7 @@ export function IncomeFormScreen({ navigation, route }: any) {
       const selectedMemberName = familyMembers.find(m => m._id === member)?.name || "Me";
       
       const payload: Income = {
-        _id: isEdit && incomeId ? incomeId : Date.now().toString() + Math.random().toString(36).substring(7),
+        _id: isEdit && incomeId ? incomeId : generateUUID(),
         name: name.trim() || (source === "other" ? customSourceName.trim() : selectedSource?.label) || "Income",
         amount: numAmount,
         source: finalSource,

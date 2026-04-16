@@ -11,6 +11,7 @@ import { SheetsScreen } from "../screens/SheetsScreen";
 import { ExpenseFormScreen } from "../screens/ExpenseFormScreen";
 import { BudgetFormScreen } from "../screens/BudgetFormScreen";
 import { IncomeFormScreen } from "../screens/IncomeFormScreen";
+import { AddTransactionScreen } from "../screens/AddTransactionScreen";
 import { AppTabs } from "./AppTabs";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -58,6 +59,14 @@ export function AppNavigator() {
       <Stack.Screen 
         name="IncomeForm"
         component={IncomeFormScreen}
+        options={{
+          headerShown: false,
+          presentation: "modal"
+        }}
+      />
+      <Stack.Screen 
+        name="AddTransaction"
+        component={AddTransactionScreen}
         options={{
           headerShown: false,
           presentation: "modal"

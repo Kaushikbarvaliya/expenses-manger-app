@@ -21,6 +21,8 @@ import {
   selectGuestTransactions,
   setLoggedIn,
 } from "../store/slices/transactionSlice";
+import { SheetSelectionModal } from "../components/SheetSelectionModal";
+import theme from "../theme/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -28,6 +30,8 @@ export function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSheetModal, setShowSheetModal] = useState(false);
+  const [user, setUser] = useState<StoredUser | null>(null);
   const dispatch = useAppDispatch();
   const { expenses, incomes } = useAppSelector(selectGuestTransactions);
 
@@ -42,6 +46,51 @@ export function LoginScreen({ navigation }: Props) {
   const handleContinueAsGuest = () => {
     dispatch(setLoggedIn(false));
     navigation.replace("App");
+  };
+
+  const handleSheetSelected = async (sheetId: string, sheetName: string) => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Use the new merge-guest-data endpoint with selected sheet
+      const mergeResult = await apiFetch("/auth/merge-guest-data", {
+        method: "POST",
+        token: user.token,
+        body: JSON.stringify({
+          guestExpenses: expenses,
+          guestIncomes: incomes,
+          sheetId: sheetId,
+        }),
+      });
+
+      const { results } = mergeResult as { results: { expensesMerged: number; expensesSkipped: number; incomesMerged: number; incomesSkipped: number; errors: string[] } };
+      
+      // Show merge results to user
+      const totalMerged = results.expensesMerged + results.incomesMerged;
+      const totalSkipped = results.expensesSkipped + results.incomesSkipped;
+      
+      if (totalMerged > 0) {
+        let message = `Successfully merged ${totalMerged} transaction(s) into "${sheetName}"`;
+        if (totalSkipped > 0) {
+          message += ` and skipped ${totalSkipped} duplicate(s)`;
+        }
+        if (results.errors.length > 0) {
+          message += `. Some items had errors.`;
+        }
+        Alert.alert("Merge Complete", message);
+      }
+
+      dispatch(login());
+      navigation.replace("Sheets");
+    } catch (syncErr: unknown) {
+      const message = syncErr instanceof Error ? syncErr.message : "Sync failed";
+      Alert.alert("Sync Error", `Could not sync guest data: ${message}. You are logged in but guest data was not merged.`);
+      dispatch(login());
+      navigation.replace("Sheets");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogin = async () => {
@@ -78,55 +127,10 @@ export function LoginScreen({ navigation }: Props) {
             {
               text: "Yes, Merge",
               style: "default",
-              onPress: async () => {
-                setLoading(true);
-                try {
-                  const sid = await getActiveSheetId();
-
-                  // Sync expenses
-                  for (const exp of expenses) {
-                    await apiFetch(`/expenses`, {
-                      method: "POST",
-                      token: user.token,
-                      sheetId: sid || undefined,
-                      body: JSON.stringify({
-                        name: exp.name,
-                        amount: exp.amount,
-                        category: exp.category,
-                        date: exp.date,
-                        method: exp.method,
-                        memberId: "self",
-                        recurring: exp.recurring,
-                      }),
-                    }).catch(() => {});
-                  }
-
-                  // Sync incomes
-                  for (const inc of incomes) {
-                    await apiFetch(`/incomes`, {
-                      method: "POST",
-                      token: user.token,
-                      sheetId: sid || undefined,
-                      body: JSON.stringify({
-                        name: inc.name,
-                        amount: inc.amount,
-                        source: inc.source,
-                        date: inc.date,
-                        method: inc.method,
-                        memberId: "self",
-                      }),
-                    }).catch(() => {});
-                  }
-
-                  dispatch(login());
-                  navigation.replace("Sheets");
-                } catch (syncErr: unknown) {
-                  Alert.alert("Sync Error", "Could not fully sync guest data, but you are logged in.");
-                  dispatch(login());
-                  navigation.replace("Sheets");
-                } finally {
-                  setLoading(false);
-                }
+              onPress: () => {
+                // Store user and show sheet selection modal
+                setUser(user);
+                setShowSheetModal(true);
               },
             },
           ]
@@ -149,152 +153,173 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.select({ ios: "padding", android: undefined })}
-      >
-        <View style={styles.card}>
-          <View style={styles.brandRow}>
-            <View style={styles.brandIcon} />
-            <Text style={styles.brandName}>SpendSmart</Text>
+    <>
+      <SafeAreaView style={styles.safe}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.select({ ios: "padding", android: undefined })}
+        >
+          <View style={styles.card}>
+            <View style={styles.brandRow}>
+              <View style={styles.brandIcon} />
+              <Text style={styles.brandName}>SpendSmart</Text>
+            </View>
+
+            <Text style={styles.title}>Sign In</Text>
+            <Text style={styles.subtitle}>Enter your credentials to continue</Text>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor="#9ca3af"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Your password"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                returnKeyType="done"
+                onSubmitEditing={() => void handleLogin()}
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate("ForgotPassword")}
+              style={{ alignSelf: "flex-end", marginTop: -4 }}
+            >
+              <Text style={{ color: "#6655ee", fontWeight: "700", fontSize: 13 }}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+              onPress={() => void handleLogin()}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.primaryButtonText}>{loading ? "Signing in..." : "Sign In"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.navigate("Register")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.linkText}>Don't have an account? Create one</Text>
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.guestButton}
+              onPress={handleContinueAsGuest}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.guestButtonText}>Continue as Guest</Text>
+            </TouchableOpacity>
           </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
 
-          <Text style={styles.title}>Sign In</Text>
-          <Text style={styles.subtitle}>Enter your credentials to continue</Text>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor="#9ca3af"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-              returnKeyType="next"
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Your password"
-              placeholderTextColor="#9ca3af"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              returnKeyType="done"
-              onSubmitEditing={() => void handleLogin()}
-            />
-          </View>
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate("ForgotPassword")}
-            style={{ alignSelf: "flex-end", marginTop: -4 }}
-          >
-            <Text style={{ color: "#6655ee", fontWeight: "700", fontSize: 13 }}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
-            onPress={() => void handleLogin()}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.primaryButtonText}>{loading ? "Signing in..." : "Sign In"}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate("Register")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.linkText}>Don't have an account? Create one</Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.guestButton}
-            onPress={handleContinueAsGuest}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.guestButtonText}>👤  Continue as Guest</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <SheetSelectionModal
+        visible={showSheetModal}
+        onClose={() => setShowSheetModal(false)}
+        onSheetSelected={handleSheetSelected}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f4f4f8" },
-  container: { flex: 1, justifyContent: "center", paddingHorizontal: 16 },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    gap: 12,
+  safe: theme.COMPONENT_STYLES.safeArea,
+  container: { 
+    ...theme.COMPONENT_STYLES.screen, 
+    justifyContent: "center" 
   },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  card: {
+    ...theme.COMPONENT_STYLES.cardLarge,
+    gap: theme.SPACING.xl,
+  },
+  brandRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    gap: theme.SPACING.lg, 
+    marginBottom: theme.SPACING.base 
+  },
   brandIcon: {
     width: 34,
     height: 34,
-    borderRadius: 12,
-    backgroundColor: "#7c6aff",
+    borderRadius: theme.BORDER_RADIUS.xl,
+    backgroundColor: theme.COLORS.primary,
   },
-  brandName: { fontSize: 16, fontWeight: "900", color: "#111827" },
-  title: { fontSize: 28, fontWeight: "900", color: "#111827", letterSpacing: -0.4 },
-  subtitle: { fontSize: 14, color: "#4b5563", fontWeight: "600", marginBottom: 10 },
-  field: { gap: 7 },
-  label: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#6b7280",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
+  brandName: { 
+    ...theme.TYPOGRAPHY.h5,
+    color: theme.COLORS.text 
   },
-  input: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-    backgroundColor: "#f9fafb",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: "#111827",
-    fontWeight: "600",
+  title: { 
+    ...theme.TYPOGRAPHY.h2,
+    letterSpacing: -0.4 
   },
+  subtitle: { 
+    ...theme.TYPOGRAPHY.body, 
+    marginBottom: theme.SPACING.lg 
+  },
+  field: { gap: theme.SPACING.base },
+  label: theme.TYPOGRAPHY.label,
+  input: theme.COMPONENT_STYLES.input,
   primaryButton: {
-    marginTop: 8,
-    borderRadius: 14,
-    backgroundColor: "#7c6aff",
-    paddingVertical: 13,
-    alignItems: "center",
+    ...theme.COMPONENT_STYLES.button,
+    marginTop: theme.SPACING.base,
   },
   primaryButtonDisabled: { opacity: 0.6 },
-  primaryButtonText: { color: "#ffffff", fontWeight: "900", fontSize: 15 },
-  linkButton: { paddingVertical: 6, alignItems: "center" },
-  linkText: { color: "#6655ee", fontWeight: "900", fontSize: 13 },
-  dividerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "rgba(0,0,0,0.08)" },
-  dividerText: { fontSize: 12, fontWeight: "700", color: "#9ca3af" },
-  guestButton: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.1)",
-    backgroundColor: "#f9fafb",
-    paddingVertical: 13,
-    alignItems: "center",
+  primaryButtonText: theme.TYPOGRAPHY.button,
+  linkButton: { 
+    paddingVertical: theme.SPACING.base, 
+    alignItems: "center" 
   },
-  guestButtonText: { color: "#374151", fontWeight: "800", fontSize: 14 },
+  linkText: { 
+    ...theme.TYPOGRAPHY.link,
+    fontSize: theme.FONTS.size.sm 
+  },
+  dividerRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    gap: theme.SPACING.lg, 
+    marginVertical: theme.SPACING.base 
+  },
+  dividerLine: { 
+    flex: 1, 
+    height: 1, 
+    backgroundColor: theme.COLORS.border 
+  },
+  dividerText: { 
+    ...theme.TYPOGRAPHY.caption,
+    fontWeight: theme.FONTS.weight.semibold 
+  },
+  guestButton: {
+    ...theme.COMPONENT_STYLES.buttonOutline,
+    borderWidth: 2,
+    backgroundColor: theme.COLORS.surface2,
+  },
+  guestButtonText: { 
+    ...theme.TYPOGRAPHY.buttonText,
+    color: theme.COLORS.text2,
+    fontWeight: theme.FONTS.weight.black 
+  },
 });

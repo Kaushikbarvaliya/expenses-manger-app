@@ -16,19 +16,10 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { setStoredUser } from "../storage/auth";
+import theme from "../theme/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "VerifyEmail">;
 
-const COLORS = {
-  primary: "#7c6aff",
-  surface: "#ffffff",
-  background: "#f4f4f8",
-  text: "#111827",
-  text2: "#4b5563",
-  text3: "#9ca3af",
-  border: "rgba(0,0,0,0.08)",
-  accent: "#7c6aff",
-};
 
 export function VerifyEmailScreen({ route, navigation }: Props) {
   const { email } = route.params;
@@ -60,12 +51,15 @@ export function VerifyEmailScreen({ route, navigation }: Props) {
       });
 
       console.log("User stored, resetting navigation to Sheets...");
-      // Navigate immediately for better UX
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Sheets", params: { autoAccepted: data.pendingInvitesAccepted > 0 } }],
-      });
-      console.log("Navigation reset called.");
+      console.log("User data being stored:", data);
+      // Add small delay to ensure AsyncStorage completes
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Sheets", params: { autoAccepted: data.pendingInvitesAccepted > 0 } }],
+        });
+        console.log("Navigation reset called.");
+      }, 100);
     } catch (err: any) {
       console.error("Verification error:", err);
       Alert.alert("Verification Failed", err.message || "Invalid or expired code.");
@@ -107,7 +101,7 @@ export function VerifyEmailScreen({ route, navigation }: Props) {
             <Text style={styles.title}>Verify Email</Text>
             <Text style={styles.subtitle}>
               We've sent a 6-digit verification code to
-              <Text style={{ color: COLORS.text, fontWeight: "700" }}> {email}</Text>.
+              <Text style={{ color: theme.COLORS.text, fontWeight: "700" }}> {email}</Text>.
             </Text>
 
             <View style={styles.field}>
@@ -115,7 +109,7 @@ export function VerifyEmailScreen({ route, navigation }: Props) {
               <TextInput
                 style={styles.input}
                 placeholder="123456"
-                placeholderTextColor={COLORS.text3}
+                placeholderTextColor={theme.COLORS.text4}
                 value={otp}
                 onChangeText={setOtp}
                 keyboardType="number-pad"
@@ -152,48 +146,55 @@ export function VerifyEmailScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
-  container: { flex: 1, paddingHorizontal: 20 },
-  card: {
-    backgroundColor: COLORS.surface,
-    padding: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 16,
+  safe: theme.COMPONENT_STYLES.safeArea,
+  container: { 
+    ...theme.COMPONENT_STYLES.screen, 
+    paddingHorizontal: theme.SPACING["3xl"] 
   },
-  backBtn: { marginBottom: 8 },
-  backBtnText: { color: COLORS.text2, fontWeight: "700", fontSize: 14 },
-  title: { fontSize: 26, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: COLORS.text2, fontWeight: "600", marginBottom: 8, lineHeight: 20 },
-  field: { gap: 8 },
-  label: { fontSize: 11, fontWeight: "900", color: COLORS.text3, textTransform: "uppercase", letterSpacing: 0.5 },
+  card: {
+    ...theme.COMPONENT_STYLES.cardLarge,
+    gap: theme.SPACING["3xl"],
+  },
+  backBtn: { marginBottom: theme.SPACING.base },
+  backBtnText: { 
+    ...theme.TYPOGRAPHY.link,
+    fontSize: theme.FONTS.size.base 
+  },
+  title: { 
+    ...theme.TYPOGRAPHY.h1,
+    letterSpacing: -0.5 
+  },
+  subtitle: { 
+    ...theme.TYPOGRAPHY.body, 
+    marginBottom: theme.SPACING.base, 
+    lineHeight: 20 
+  },
+  field: { gap: theme.SPACING.base },
+  label: theme.TYPOGRAPHY.label,
   input: {
-    backgroundColor: "#fafafb",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 24,
-    color: COLORS.text,
-    fontWeight: "800",
+    ...theme.COMPONENT_STYLES.inputLarge,
+    backgroundColor: theme.COLORS.surface2,
+    fontSize: theme.FONTS.size["5xl"],
+    fontWeight: theme.FONTS.weight.black,
     textAlign: "center",
     letterSpacing: 8,
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    ...theme.COMPONENT_STYLES.button,
+    marginTop: theme.SPACING.base,
   },
-  primaryButtonText: { color: "#fff", fontWeight: "900", fontSize: 16 },
-  footer: { flexDirection: "row", justifyContent: "center", marginTop: 8 },
-  footerText: { fontSize: 13, color: COLORS.text2, fontWeight: "600" },
-  footerLink: { fontSize: 13, color: COLORS.primary, fontWeight: "800" },
+  primaryButtonText: theme.TYPOGRAPHY.button,
+  footer: { 
+    flexDirection: "row", 
+    justifyContent: "center", 
+    marginTop: theme.SPACING.base 
+  },
+  footerText: { 
+    ...theme.TYPOGRAPHY.bodySmall,
+    fontWeight: theme.FONTS.weight.medium 
+  },
+  footerLink: { 
+    ...theme.TYPOGRAPHY.link,
+    fontSize: theme.FONTS.size.base 
+  },
 });

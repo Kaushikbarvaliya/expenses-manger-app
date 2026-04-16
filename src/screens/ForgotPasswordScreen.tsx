@@ -15,19 +15,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/types";
 import { apiFetch } from "../api/client";
+import theme from "../theme/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "ForgotPassword">;
 
-const COLORS = {
-  primary: "#7c6aff",
-  surface: "#ffffff",
-  background: "#f4f4f8",
-  text: "#111827",
-  text2: "#4b5563",
-  text3: "#9ca3af",
-  border: "rgba(0,0,0,0.08)",
-  accent: "#7c6aff",
-};
 
 export function ForgotPasswordScreen({ navigation }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -125,7 +116,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                 <TextInput
                   style={styles.input}
                   placeholder="you@example.com"
-                  placeholderTextColor={COLORS.text3}
+                  placeholderTextColor={theme.COLORS.text4}
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
@@ -140,14 +131,14 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                 <TextInput
                   style={styles.input}
                   placeholder="123456"
-                  placeholderTextColor={COLORS.text3}
+                  placeholderTextColor={theme.COLORS.text4}
                   value={otp}
                   onChangeText={setOtp}
                   keyboardType="number-pad"
                   maxLength={6}
                 />
                 <TouchableOpacity onPress={handleSendOtp} style={{ marginTop: 8 }}>
-                   <Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 13 }}>Resend OTP</Text>
+                   <Text style={{ color: theme.COLORS.primary, fontWeight: "700", fontSize: 13 }}>Resend OTP</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -159,7 +150,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   <TextInput
                     style={styles.input}
                     placeholder="Min 6 characters"
-                    placeholderTextColor={COLORS.text3}
+                    placeholderTextColor={theme.COLORS.text4}
                     secureTextEntry
                     value={newPassword}
                     onChangeText={setNewPassword}
@@ -170,7 +161,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   <TextInput
                     style={styles.input}
                     placeholder="Repeat new password"
-                    placeholderTextColor={COLORS.text3}
+                    placeholderTextColor={theme.COLORS.text4}
                     secureTextEntry
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -204,43 +195,40 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
-  container: { flex: 1, paddingHorizontal: 20 },
-  card: {
-    backgroundColor: COLORS.surface,
-    padding: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    gap: 16,
+  safe: theme.COMPONENT_STYLES.safeArea,
+  container: { 
+    ...theme.COMPONENT_STYLES.screen, 
+    paddingHorizontal: theme.SPACING["3xl"] 
   },
-  backBtn: { marginBottom: 8 },
-  backBtnText: { color: COLORS.text2, fontWeight: "700", fontSize: 14 },
-  title: { fontSize: 26, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: COLORS.text2, fontWeight: "600", marginBottom: 8, lineHeight: 20 },
-  field: { gap: 8 },
-  label: { fontSize: 11, fontWeight: "900", color: COLORS.text3, textTransform: "uppercase", letterSpacing: 0.5 },
+  card: {
+    ...theme.COMPONENT_STYLES.cardLarge,
+    gap: theme.SPACING["3xl"],
+  },
+  backBtn: { marginBottom: theme.SPACING.base },
+  backBtnText: { 
+    ...theme.TYPOGRAPHY.link,
+    fontSize: theme.FONTS.size.base 
+  },
+  title: { 
+    ...theme.TYPOGRAPHY.h1,
+    letterSpacing: -0.5 
+  },
+  subtitle: { 
+    ...theme.TYPOGRAPHY.body, 
+    marginBottom: theme.SPACING.base, 
+    lineHeight: 20 
+  },
+  field: { gap: theme.SPACING.base },
+  label: theme.TYPOGRAPHY.label,
   input: {
-    backgroundColor: "#fafafb",
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 16,
-    color: COLORS.text,
-    fontWeight: "600",
+    ...theme.COMPONENT_STYLES.input,
+    backgroundColor: theme.COLORS.surface2,
+    fontSize: theme.FONTS.size["2xl"],
+    fontWeight: theme.FONTS.weight.medium,
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 8,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    ...theme.COMPONENT_STYLES.button,
+    marginTop: theme.SPACING.base,
   },
-  primaryButtonText: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  primaryButtonText: theme.TYPOGRAPHY.button,
 });

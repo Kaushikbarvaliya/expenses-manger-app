@@ -19,6 +19,7 @@ import { addTransaction, updateTransaction, selectActiveTransactions } from "../
 import type { Expense } from "../types";
 import { CATEGORIES, COLORS, PAYMENT_METHODS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
+import { generateUUID } from "../utils/uuid";
 
 export function ExpenseFormScreen({ navigation, route }: any) {
   const { currencySymbol } = useCurrency();
@@ -106,7 +107,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
       const selectedMemberName = familyMembers.find(m => m._id === member)?.name || "Me";
       
       const payload: Expense = {
-        _id: isEdit && expenseId ? expenseId : Date.now().toString() + Math.random().toString(36).substring(7),
+        _id: isEdit && expenseId ? expenseId : generateUUID(),
         name: name.trim() || (category === "other" ? customCatName.trim() : selectedCat?.label) || "Expense",
         amount: numAmount,
         category: finalCat,
