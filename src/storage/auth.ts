@@ -4,6 +4,18 @@ import type { StoredUser } from "../navigation/types";
 const USER_KEY = "expense-tracker-user";
 const ACTIVE_SHEET_ID_KEY = "expense-tracker-active-sheet-id";
 const CURRENCY_KEY = "expense-tracker-currency";
+const GUEST_ID_KEY = "expense-tracker-guest-id";
+
+import { generateUUID } from "../utils/uuid";
+
+export async function getGuestId(): Promise<string> {
+  const existing = await AsyncStorage.getItem(GUEST_ID_KEY);
+  if (existing) return existing;
+  
+  const newGuestId = generateUUID();
+  await AsyncStorage.setItem(GUEST_ID_KEY, newGuestId);
+  return newGuestId;
+}
 
 export async function getStoredUser(): Promise<StoredUser | null> {
   try {

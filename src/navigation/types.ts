@@ -28,11 +28,13 @@ export type RootStackParamList = {
   BudgetForm: { mode: "add" } | { mode: "edit"; budgetId: string };
   IncomeForm: { mode: "add" } | { mode: "edit"; incomeId: string };
   AddTransaction: { mode: "add" } | { mode: "edit"; id: string; type: "expense" | "income" };
+  RecurringList: undefined;
+  AddEditRecurring: { mode: "add" } | { mode: "edit"; id: string };
 };
 
 export type TabParamList = {
   Home: undefined;
-  Report: undefined;
+  Recurring: undefined;
   AddPlaceholder: undefined;
   Plan: undefined;
   Settings: undefined;

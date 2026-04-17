@@ -135,11 +135,23 @@ export function DashboardScreen({ navigation }: any) {
   const { filteredExpenses, filteredIncomes, totalExpense, totalIncome, balance } = useMemo(() => {
     const fExp = expenses.filter(e => {
       const d = new Date(e.date);
-      return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+      if (dateViewMode === 'month') {
+        // Month selection: filter by both month AND year (monthly data)
+        return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+      } else {
+        // Year selection: filter by year only (full year data)
+        return d.getFullYear() === selectedDate.getFullYear();
+      }
     });
     const fInc = incomes.filter(i => {
       const d = new Date(i.date);
-      return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+      if (dateViewMode === 'month') {
+        // Month selection: filter by both month AND year (monthly data)
+        return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+      } else {
+        // Year selection: filter by year only (full year data)
+        return d.getFullYear() === selectedDate.getFullYear();
+      }
     });
 
     const expTot = fExp.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
@@ -152,7 +164,7 @@ export function DashboardScreen({ navigation }: any) {
       totalIncome: incTot,
       balance: incTot - expTot
     };
-  }, [expenses, incomes, selectedDate]);
+  }, [expenses, incomes, selectedDate, dateViewMode]);
 
   const recentTransactions = useMemo(() => {
     const combined: Transaction[] = [...filteredExpenses, ...filteredIncomes];
@@ -265,7 +277,7 @@ export function DashboardScreen({ navigation }: any) {
       <View style={styles.summarySection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Money</Text>
-          <TouchableOpacity style={styles.detailsBtnContainer} onPress={() => navigation.navigate("Report")}>
+          <TouchableOpacity style={styles.detailsBtnContainer} onPress={() => navigation.navigate("Recurring")}>
             <Text style={styles.detailsBtn}>Details</Text>
             <ChevronRight size={12} color="#9CA3AF" />
           </TouchableOpacity>

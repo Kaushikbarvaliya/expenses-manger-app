@@ -4,9 +4,9 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { COLORS } from "../constants/design";
 import { ExpenseFormContent } from "../components/ExpenseFormContent";
@@ -61,6 +61,15 @@ export function AddTransactionScreen({ navigation, route }: any) {
         ) : (
           <IncomeFormContent navigation={navigation} mode={mode} id={id} />
         )}
+
+        <View style={styles.recurringLinkContainer}>
+           <TouchableOpacity 
+             style={styles.recurringLink}
+             onPress={() => navigation.navigate("AddEditRecurring", { mode: "add" })}
+           >
+             <Text style={styles.recurringLinkText}>Create a Recurring Transaction instead</Text>
+           </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -129,5 +138,19 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     marginTop: 20,
+  },
+  recurringLinkContainer: {
+    paddingHorizontal: 20,
+    marginTop: 30,
+    alignItems: "center",
+  },
+  recurringLink: {
+    paddingVertical: 10,
+  },
+  recurringLinkText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
 });

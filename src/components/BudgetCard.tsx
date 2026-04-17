@@ -5,10 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Dimensions,
 } from "react-native";
-import { MoreVertical, Edit2, Trash2, TrendingUp, TrendingDown, Target } from "lucide-react-native";
-import { CATEGORIES, COLORS } from "../constants/design";
+import { MoreVertical, Edit2, Trash2, TrendingUp, Target, ChevronDown, ChevronUp } from "lucide-react-native";
+import { CATEGORIES, COLORS as DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
+
+const { width } = Dimensions.get("window");
 
 type Budget = {
   _id: string;
@@ -37,9 +40,9 @@ interface BudgetCardProps {
 export function BudgetCard({ budget, expenses, onEdit, onDelete }: BudgetCardProps) {
   const { formatAmount } = useCurrency();
   const [showOptions, setShowOptions] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  const periodLabel = budget.periodType === "yearly" ? `Year ${budget.year}` : `${MONTH_FULL[budget.month - 1]} ${budget.year}`;
-  const periodIcon = budget.periodType === "yearly" ? "calendar" : "calendar";
+  const periodLabel = budget.periodType === "yearly" ? `${budget.year}` : `${MONTH_FULL[budget.month - 1]} ${budget.year}`;
   
   // Filter expenses for this budget period
   const scopedExp = expenses.filter((e) => {
@@ -58,9 +61,9 @@ export function BudgetCard({ budget, expenses, onEdit, onDelete }: BudgetCardPro
   const pct = Math.min(100, Math.max(0, rawPct));
   const isOver = remaining < 0;
   
-  let barColor = COLORS.green;
-  if (pct >= 100) barColor = COLORS.red;
-  else if (pct >= 80) barColor = COLORS.amber;
+  let barColor = DESIGN_COLORS.green;
+  if (pct >= 100) barColor = DESIGN_COLORS.red;
+  else if (pct >= 80) barColor = DESIGN_COLORS.amber;
 
   const handleEdit = () => {
     setShowOptions(false);
@@ -69,35 +72,27 @@ export function BudgetCard({ budget, expenses, onEdit, onDelete }: BudgetCardPro
 
   const handleDelete = () => {
     setShowOptions(false);
-    Alert.alert(
-      "Delete Budget?",
-      "This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => onDelete(budget._id),
-        },
-      ]
-    );
+    onDelete(budget._id);
   };
 
   return (
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.cardHeader}>
-        <View style={styles.periodInfo}>
-          <View style={styles.periodRow}>
-            <Target size={16} color={COLORS.primary} />
+        <View style={styles.periodRow}>
+          <View style={[styles.iconBg, { backgroundColor: DESIGN_COLORS.primary + "15" }]}>
+            <Target size={20} color={DESIGN_COLORS.primary} strokeWidth={2.5} />
+          </View>
+          <View style={styles.headerInfo}>
             <Text style={styles.periodLabel}>{periodLabel}</Text>
-            <View style={[styles.periodBadge, { backgroundColor: budget.periodType === "yearly" ? COLORS.accent + "20" : COLORS.green + "20" }]}>
-              <Text style={[styles.periodBadgeText, { color: budget.periodType === "yearly" ? COLORS.accent : COLORS.green }]}>
-                {budget.periodType === "yearly" ? "Yearly" : "Monthly"}
-              </Text>
+            <View style={styles.badgeRow}>
+              <View style={[styles.badge, { backgroundColor: budget.periodType === "yearly" ? "#EDE9FE" : "#DCFCE7" }]}>
+                <Text style={[styles.badgeText, { color: budget.periodType === "yearly" ? DESIGN_COLORS.primary : DESIGN_COLORS.green }]}>
+                  {budget.periodType === "yearly" ? "Yearly Goal" : "Monthly Target"}
+                </Text>
+              </View>
             </View>
           </View>
-          <Text style={styles.totalBudget}>Total Budget: {formatAmount(total)}</Text>
         </View>
         
         <View style={styles.optionsContainer}>
@@ -105,17 +100,17 @@ export function BudgetCard({ budget, expenses, onEdit, onDelete }: BudgetCardPro
             style={styles.optionsButton}
             onPress={() => setShowOptions(!showOptions)}
           >
-            <MoreVertical size={20} color={COLORS.text3} />
+            <MoreVertical size={20} color={DESIGN_COLORS.text3} />
           </TouchableOpacity>
           
           {showOptions && (
             <View style={styles.optionsMenu}>
               <TouchableOpacity style={styles.optionItem} onPress={handleEdit}>
-                <Edit2 size={16} color={COLORS.text} />
+                <Edit2 size={16} color={DESIGN_COLORS.text} />
                 <Text style={styles.optionText}>Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.optionItem, styles.deleteOption]} onPress={handleDelete}>
-                <Trash2 size={16} color={COLORS.red} />
+                <Trash2 size={16} color={DESIGN_COLORS.red} />
                 <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
               </TouchableOpacity>
             </View>
@@ -124,55 +119,82 @@ export function BudgetCard({ budget, expenses, onEdit, onDelete }: BudgetCardPro
       </View>
 
       {/* Progress Section */}
-      <View style={styles.progressSection}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.spentText}>{formatAmount(spent)} spent</Text>
-          <Text style={[styles.remainingText, isOver && { color: COLORS.red }]}>
-            {isOver ? `${formatAmount(Math.abs(remaining))} over` : `${formatAmount(remaining)} left`}
-          </Text>
-        </View>
-        
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: barColor }]} />
-        </View>
-        
-        <View style={styles.progressStats}>
-          <View style={styles.statItem}>
-            <TrendingUp size={14} color={COLORS.text3} />
-            <Text style={styles.statText}>{pct.toFixed(1)}% used</Text>
+      <View style={styles.progressContainer}>
+        <View style={styles.amountSummary}>
+          <View>
+            <Text style={styles.spentLabel}>{isOver ? "Overspent" : "Total Spent"}</Text>
+            <Text style={[styles.spentAmount, isOver && { color: DESIGN_COLORS.red }]}>{formatAmount(spent)}</Text>
           </View>
-          <Text style={styles.progressPercentage}>{formatAmount(spent)} / {formatAmount(total)}</Text>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={styles.totalLabel}>Goal: {formatAmount(total)}</Text>
+            <Text style={[styles.remainingLabel, isOver && { color: DESIGN_COLORS.red }]}>
+              {isOver ? `${formatAmount(Math.abs(remaining))} over` : `${formatAmount(remaining)} left`}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.progressBarWrapper}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: barColor }]} />
+          </View>
+          {pct > 0 && (
+            <View style={[styles.pctIndicator, { left: `${Math.min(92, pct)}%` }]}>
+              <Text style={styles.pctText}>{pct.toFixed(0)}%</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.statRow}>
+          <View style={styles.statChip}>
+            <TrendingUp size={12} color={DESIGN_COLORS.text2} />
+            <Text style={styles.statChipText}>{isOver ? "Limit Exceeded" : "On Track"}</Text>
+          </View>
         </View>
       </View>
 
-      {/* Category Breakdown */}
+      {/* Category Breakdown Toggle */}
       {budget.categories && budget.categories.some(c => c.amount > 0) && (
-        <View style={styles.categorySection}>
-          <Text style={styles.categoryTitle}>Category Breakdown</Text>
-          {budget.categories.filter(c => c.amount > 0).map((catBud) => {
-            const catInfo = CATEGORIES.find(c => c.id === catBud.category) || CATEGORIES[CATEGORIES.length - 1];
-            const catSpent = scopedExp.filter(e => e.category === catBud.category).reduce((s, e) => s + (Number(e.amount) || 0), 0);
-            const catPct = Math.min(100, Math.max(0, (catSpent / catBud.amount) * 100));
-            const catOver = catSpent > catBud.amount;
+        <>
+          <View style={styles.divider} />
+          <TouchableOpacity 
+            style={styles.expandButton} 
+            onPress={() => setExpanded(!expanded)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.expandText}>Category Breakdown</Text>
+            {expanded ? <ChevronUp size={18} color={DESIGN_COLORS.text3} /> : <ChevronDown size={18} color={DESIGN_COLORS.text3} />}
+          </TouchableOpacity>
 
-            return (
-              <View key={catBud.category} style={styles.categoryRow}>
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryIcon}>{catInfo.icon}</Text>
-                  <Text style={styles.categoryLabel}>{catInfo.label}</Text>
-                </View>
-                <View style={styles.categoryAmount}>
-                  <Text style={[styles.categorySpent, catOver && { color: COLORS.red }]}>
-                    {formatAmount(catSpent)} / {formatAmount(catBud.amount)}
-                  </Text>
-                  <View style={styles.categoryProgress}>
-                    <View style={[styles.categoryProgressFill, { width: `${catPct}%`, backgroundColor: catOver ? COLORS.red : COLORS.accent }]} />
+          {expanded && (
+            <View style={styles.categoryList}>
+              {budget.categories.filter(c => c.amount > 0).map((catBud) => {
+                const catInfo = CATEGORIES.find(c => c.id === catBud.category) || CATEGORIES[CATEGORIES.length - 1];
+                const catSpent = scopedExp.filter(e => e.category === catBud.category).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+                const catPct = Math.min(100, Math.max(0, (catSpent / catBud.amount) * 100));
+                const catOver = catSpent > catBud.amount;
+
+                return (
+                  <View key={catBud.category} style={styles.categoryItem}>
+                    <View style={styles.catHeader}>
+                      <View style={styles.catLabelRow}>
+                        <Text style={styles.catIcon}>{catInfo.icon}</Text>
+                        <Text style={styles.catLabel}>{catInfo.label}</Text>
+                      </View>
+                      <Text style={[styles.catAmtText, catOver && { color: DESIGN_COLORS.red }]}>
+                        {formatAmount(catSpent)} <Text style={{ color: DESIGN_COLORS.text3, fontWeight: "500" }}>/ {formatAmount(catBud.amount)}</Text>
+                      </Text>
+                    </View>
+                    <View style={styles.catProgressContainer}>
+                      <View style={styles.catProgressBar}>
+                        <View style={[styles.catProgressFill, { width: `${catPct}%`, backgroundColor: catOver ? DESIGN_COLORS.red : DESIGN_COLORS.primaryLight }]} />
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
+                );
+              })}
+            </View>
+          )}
+        </>
       )}
     </View>
   );
@@ -181,16 +203,15 @@ export function BudgetCard({ budget, expenses, onEdit, onDelete }: BudgetCardPro
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 20,
     marginBottom: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DESIGN_COLORS.border,
   },
   cardHeader: {
     flexDirection: "row",
@@ -198,175 +219,225 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 20,
   },
-  periodInfo: {
-    flex: 1,
-  },
   periodRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
+  },
+  iconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  headerInfo: {
+    justifyContent: "center",
   },
   periodLabel: {
     fontSize: 18,
-    fontWeight: "800",
-    color: COLORS.text,
+    fontWeight: "700",
+    color: DESIGN_COLORS.text,
+    marginBottom: 2,
   },
-  periodBadge: {
+  badgeRow: {
+    flexDirection: "row",
+  },
+  badge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 8,
   },
-  periodBadgeText: {
+  badgeText: {
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: "800",
     textTransform: "uppercase",
-  },
-  totalBudget: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text3,
   },
   optionsContainer: {
     position: "relative",
   },
   optionsButton: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: DESIGN_COLORS.surface2,
     justifyContent: "center",
     alignItems: "center",
   },
   optionsMenu: {
     position: "absolute",
     right: 0,
-    top: 40,
+    top: 48,
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 8,
+    borderRadius: 14,
+    padding: 6,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 10,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 10,
+    zIndex: 100,
+    minWidth: 140,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DESIGN_COLORS.border,
   },
   optionItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  deleteOption: {
-    backgroundColor: COLORS.red + "10",
+    borderRadius: 10,
+    gap: 10,
   },
   optionText: {
     fontSize: 14,
     fontWeight: "600",
-    color: COLORS.text,
+    color: DESIGN_COLORS.text,
+  },
+  deleteOption: {
+    borderTopWidth: 1,
+    borderTopColor: DESIGN_COLORS.border,
+    marginTop: 4,
+    paddingTop: 10,
   },
   deleteText: {
-    color: COLORS.red,
+    color: DESIGN_COLORS.red,
   },
-  progressSection: {
-    marginBottom: 20,
+  progressContainer: {
+    marginBottom: 4,
   },
-  progressHeader: {
+  amountSummary: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
+    alignItems: "flex-end",
+    marginBottom: 16,
   },
-  spentText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  remainingText: {
-    fontSize: 14,
+  spentLabel: {
+    fontSize: 12,
     fontWeight: "600",
-    color: COLORS.text3,
+    color: DESIGN_COLORS.text3,
+    marginBottom: 2,
+  },
+  spentAmount: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: DESIGN_COLORS.text,
+  },
+  totalLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: DESIGN_COLORS.text3,
+    textAlign: "right",
+  },
+  remainingLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: DESIGN_COLORS.green,
+    textAlign: "right",
+    marginTop: 2,
+  },
+  progressBarWrapper: {
+    height: 24,
+    justifyContent: "center",
+    marginBottom: 12,
   },
   progressBar: {
-    height: 12,
-    backgroundColor: COLORS.surface2,
-    borderRadius: 6,
+    height: 10,
+    backgroundColor: DESIGN_COLORS.surface2,
+    borderRadius: 5,
     overflow: "hidden",
-    marginBottom: 12,
   },
   progressFill: {
     height: "100%",
+    borderRadius: 5,
+  },
+  pctIndicator: {
+    position: "absolute",
+    top: -2,
+    backgroundColor: "#111827",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 6,
   },
-  progressStats: {
+  pctText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  statRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  statItem: {
+  statChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    backgroundColor: DESIGN_COLORS.surface2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
   },
-  statText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.text3,
-  },
-  progressPercentage: {
-    fontSize: 12,
+  statChipText: {
+    fontSize: 11,
     fontWeight: "700",
-    color: COLORS.text3,
+    color: DESIGN_COLORS.text2,
   },
-  categorySection: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 16,
+  divider: {
+    height: 1,
+    backgroundColor: DESIGN_COLORS.border,
+    marginVertical: 16,
   },
-  categoryTitle: {
-    fontSize: 16,
+  expandButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: 4,
+  },
+  expandText: {
+    fontSize: 14,
     fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 16,
+    color: DESIGN_COLORS.text,
   },
-  categoryRow: {
-    marginBottom: 16,
+  categoryList: {
+    marginTop: 16,
+    gap: 16,
   },
-  categoryInfo: {
+  categoryItem: {
+    gap: 8,
+  },
+  catHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  catLabelRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 8,
   },
-  categoryIcon: {
-    fontSize: 20,
+  catIcon: {
+    fontSize: 18,
   },
-  categoryLabel: {
+  catLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: COLORS.text,
+    color: DESIGN_COLORS.text,
   },
-  categoryAmount: {
-    gap: 6,
-  },
-  categorySpent: {
+  catAmtText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.text3,
-    textAlign: "right",
+    fontWeight: "700",
+    color: DESIGN_COLORS.text,
   },
-  categoryProgress: {
+  catProgressContainer: {
     height: 6,
-    backgroundColor: COLORS.surface2,
+  },
+  catProgressBar: {
+    height: 6,
+    backgroundColor: DESIGN_COLORS.surface2,
     borderRadius: 3,
     overflow: "hidden",
   },
-  categoryProgressFill: {
+  catProgressFill: {
     height: "100%",
     borderRadius: 3,
   },

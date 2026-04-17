@@ -2,9 +2,9 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, TouchableOpacity, StyleSheet, Text, Platform } from "react-native";
 import { BlurView } from "expo-blur";
-import { Home, BarChart2, Calendar, Settings, Plus } from "lucide-react-native";
+import { Home, BarChart2, Calendar, Settings, Plus, Repeat } from "lucide-react-native";
 import { DashboardScreen } from "../screens/DashboardScreen";
-import { ReportScreen } from "../screens/ReportScreen";
+import { RecurringListScreen } from "../screens/RecurringListScreen";
 import { BudgetsScreen } from "../screens/BudgetsScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { TabParamList } from "./types";
@@ -14,7 +14,7 @@ import { useAppSelector } from "../store/hooks";
 const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
   const IconComponent = {
     Home: Home,
-    Report: BarChart2,
+    Recurring: Repeat,
     Plan: Calendar,
     Settings: Settings,
   }[name] || Home;
@@ -55,7 +55,7 @@ export function AppTabs({ navigation }: any) {
         })}
       >
         <Tab.Screen name="Home" component={DashboardScreen} />
-        <Tab.Screen name="Report" component={ReportScreen} />
+        <Tab.Screen name="Recurring" component={RecurringListScreen} />
         
         <Tab.Screen 
           name="AddPlaceholder" 

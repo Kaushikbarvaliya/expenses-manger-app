@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = "http://localhost:8000/api";
+const DEFAULT_API_BASE = "http://192.168.1.12:8000/api";
 const ANDROID_EMULATOR_API_BASE = "http://10.0.2.2:8000/api";
 
 type Env = {
@@ -36,6 +36,8 @@ function withQuery(path: string, query: Record<string, string | undefined>) {
   return path.includes("?") ? `${path}&${q}` : `${path}?${q}`;
 }
 
+import { getGuestId } from "../storage/auth";
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit & { token?: string; sheetId?: string } = {}
@@ -48,10 +50,41 @@ export async function apiFetch<T>(
   };
 
   if (!headers["Content-Type"] && options.body) headers["Content-Type"] = "application/json";
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
-  const finalPath = withQuery(path, { sheetId });
+  // Inject guestId into headers (or query) if no token is available for the backend to sync
+  const guest_id = !token ? await getGuestId() : undefined;
+  if (guest_id) {
+    headers["x-guest-id"] = guest_id;
+  }
+
+  // The backend uses query.guestId or body.guestId. Let's add it to query for GET/DELETE or body for POST/PUT/PATCH.
+  // Actually, appending guestId to query is safer and works for all methods if the backend checks req.query.guestId.
+  const queryParams: Record<string, string | undefined> = { sheetId };
+  if (guest_id && !token) {
+     queryParams.guestId = guest_id;
+  }
+
+  const finalPath = withQuery(path, queryParams);
   const { sheetId: _sheetId, token: _token, ...fetchOptions } = options;
+
+  // For mutations, inject guestId into the JSON body if not already present
+  if (guest_id && !token && ["POST", "PUT", "PATCH"].includes(fetchOptions.method || "GET")) {
+    try {
+      if (typeof fetchOptions.body === "string") {
+        const bodyObj = JSON.parse(fetchOptions.body);
+        if (!bodyObj.guestId) {
+          bodyObj.guestId = guest_id;
+          fetchOptions.body = JSON.stringify(bodyObj);
+        }
+      }
+    } catch (e) {
+      // Body might not be JSON, skip injection
+      console.warn("Could not inject guestId into body", e);
+    }
+  }
 
   try {
     const res = await fetch(`${base}${finalPath}`, { ...fetchOptions, headers });

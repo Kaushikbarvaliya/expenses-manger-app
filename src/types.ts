@@ -22,3 +22,18 @@ export type Income = {
 };
 
 export type Transaction = Expense | Income;
+
+export type RecurringTransaction = {
+  _id: string;
+  type: "income" | "expense";
+  name: string;
+  category: string;
+  amount: number;
+  frequency: "daily" | "weekly" | "monthly" | "yearly";
+  startDate: string;
+  endDate?: string | null;
+  nextRunDate: string;
+  isActive: boolean;
+  method?: string;
+  familyMemberName?: string;
+};

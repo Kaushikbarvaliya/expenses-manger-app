@@ -14,6 +14,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList, StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getStoredUser, setStoredUser, getActiveSheetId } from "../storage/auth";
+import { getGuestId } from "../storage/auth";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   clearGuestTransactions,
@@ -53,6 +54,8 @@ export function LoginScreen({ navigation }: Props) {
     
     setLoading(true);
     try {
+      const currentGuestId = await getGuestId();
+      
       // Use the new merge-guest-data endpoint with selected sheet
       const mergeResult = await apiFetch("/auth/merge-guest-data", {
         method: "POST",
@@ -60,6 +63,7 @@ export function LoginScreen({ navigation }: Props) {
         body: JSON.stringify({
           guestExpenses: expenses,
           guestIncomes: incomes,
+          guestId: currentGuestId,
           sheetId: sheetId,
         }),
       });

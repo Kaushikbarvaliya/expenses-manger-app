@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,15 +8,20 @@ import {
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Plus, ChevronRight } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Plus, ChevronRight, Target, TrendingUp, Sparkles, LogIn, PieChart } from "lucide-react-native";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
-import { CATEGORIES, COLORS } from "../constants/design";
+import { COLORS as DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import { BudgetCard } from "../components/BudgetCard";
+
+const { width } = Dimensions.get("window");
 
 type Budget = {
   _id: string;
@@ -33,23 +38,8 @@ type Expense = {
   date: string;
 };
 
-const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-
-// Same as Web: Filters expenses that fall inside this budget's period
-function filterExpensesForBudget(expenses: Expense[], budget: Budget) {
-  return expenses.filter((e) => {
-    const d = new Date(e.date);
-    if (isNaN(d.getTime())) return false;
-    const expYear = d.getFullYear();
-    const expMonth = d.getMonth() + 1;
-    if (budget.periodType === "yearly") return expYear === budget.year;
-    return expYear === budget.year && expMonth === budget.month;
-  });
-}
-
 export function BudgetsScreen({ navigation }: any) {
-  const { formatAmount, currencySymbol } = useCurrency();
+  const { formatAmount } = useCurrency();
   const [user, setUser] = useState<StoredUser | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,7 +67,7 @@ export function BudgetsScreen({ navigation }: any) {
       setBudgets(Array.isArray(budgetsData) ? budgetsData : []);
       setExpenses(Array.isArray(expensesData) ? expensesData : []);
     } catch (e: unknown) {
-      Alert.alert("Failed to load budgets", e instanceof Error ? e.message : "Error");
+      console.log("Failed to load budgets", e);
     } finally {
       if (isRefresh) setRefreshing(false);
     }
@@ -105,7 +95,7 @@ export function BudgetsScreen({ navigation }: any) {
       });
       setBudgets((prev) => prev.filter((b) => b._id !== id));
     } catch (e: unknown) {
-      Alert.alert("Delete failed", e instanceof Error ? e.message : "Error");
+      Alert.alert("Error", "Could not delete budget");
     }
   };
 
@@ -114,123 +104,412 @@ export function BudgetsScreen({ navigation }: any) {
   };
 
   const handleDeleteBudget = (budgetId: string) => {
-    deleteBudget(budgetId);
+    Alert.alert("Delete Budget", "Are you sure you want to remove this budget and all its category limits?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteBudget(budgetId) }
+    ]);
   };
 
   const handleAddBudget = () => {
     navigation.navigate("BudgetForm", { mode: "add" });
   };
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.title}>Budgets & Goals</Text>
-            <Text style={styles.subtitle}>Set period limits to track your spending.</Text>
-          </View>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddBudget}>
-            <Plus size={20} color={COLORS.primary} strokeWidth={2.5} />
-            <Text style={styles.addButtonText}>Add Budget</Text>
+  // Summary Logic
+  const { totalLimit, totalSpent, healthStatus } = useMemo(() => {
+    const limit = budgets.reduce((sum, b) => sum + (Number(b.totalBudget) || 0), 0);
+    
+    // This is a simplification; in a real app, you'd calculate vs specific periods
+    // but for the summary header, we'll show total of active budgets vs total expenses in those periods.
+    let spent = 0;
+    budgets.forEach(b => {
+      const scopedExp = expenses.filter(e => {
+        const d = new Date(e.date);
+        if (isNaN(d.getTime())) return false;
+        if (b.periodType === "yearly") return d.getFullYear() === b.year;
+        return d.getFullYear() === b.year && d.getMonth() + 1 === b.month;
+      });
+      spent += scopedExp.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    });
+
+    const pct = limit > 0 ? (spent / limit) * 100 : 0;
+    let status = "On Track";
+    if (pct >= 100) status = "Over Budget";
+    else if (pct >= 85) status = "At Risk";
+
+    return { totalLimit: limit, totalSpent: spent, healthStatus: status };
+  }, [budgets, expenses]);
+
+  const renderHeader = () => (
+    <LinearGradient
+      colors={DESIGN_COLORS.primaryGradient as any}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.headerGradient}
+    >
+      <SafeAreaView edges={["top"]} style={styles.headerContent}>
+        <View style={styles.topRow}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <ChevronRight size={24} color="#fff" style={{ transform: [{ rotate: "180deg" }] }} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Budgets & Goals</Text>
+          <TouchableOpacity 
+            style={styles.plusButton} 
+            onPress={handleAddBudget}
+          >
+            <Plus size={24} color="#fff" strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.summaryContainer}>
+          <Text style={styles.summaryLabel}>Combined Goal Limit</Text>
+          <Text style={styles.summaryAmount}>{formatAmount(totalLimit)}</Text>
+          <View style={styles.statusBadge}>
+            <Target size={12} color="#fff" />
+            <Text style={styles.statusText}>{budgets.length} Active Targets</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
+  );
+
+  const renderSummaryCard = () => (
+    <View style={styles.overlapGroup}>
+      <View style={styles.summarySection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Financial Health</Text>
+          <View style={[
+            styles.healthPill, 
+            healthStatus === "Over Budget" ? { backgroundColor: DESIGN_COLORS.red + "15" } : 
+            healthStatus === "At Risk" ? { backgroundColor: DESIGN_COLORS.amber + "15" } : 
+            { backgroundColor: DESIGN_COLORS.green + "15" }
+          ]}>
+            <TrendingUp size={12} color={healthStatus === "Over Budget" ? DESIGN_COLORS.red : healthStatus === "At Risk" ? DESIGN_COLORS.amber : DESIGN_COLORS.green} />
+            <Text style={[
+              styles.healthText,
+              { color: healthStatus === "Over Budget" ? DESIGN_COLORS.red : healthStatus === "At Risk" ? DESIGN_COLORS.amber : DESIGN_COLORS.green }
+            ]}>{healthStatus}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCard}>
+            <Text style={styles.cardLabel}>Aggregated Spent</Text>
+            <Text style={styles.cardValue}>{formatAmount(totalSpent)}</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.cardLabel}>Remaining Pool</Text>
+            <Text style={[styles.cardValue, totalLimit - totalSpent < 0 && { color: DESIGN_COLORS.red }]}>
+              {formatAmount(Math.max(0, totalLimit - totalSpent))}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {loading ? (
-        <View style={styles.center}><ActivityIndicator /><Text style={styles.centerText}>Loading…</Text></View>
+      <TouchableOpacity 
+        style={styles.insightBanner}
+        onPress={handleAddBudget}
+      >
+        <View style={styles.insightLeft}>
+          <View style={styles.sparkleBox}>
+            <Sparkles size={16} color="#fff" />
+          </View>
+          <Text style={styles.insightText}>Set a new spending goal</Text>
+        </View>
+        <ChevronRight size={18} color="#9CA3AF" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      {!user?.token ? (
+        <View style={styles.guestState}>
+          <View style={styles.emptyIconCircle}>
+            <LogIn size={40} color={DESIGN_COLORS.text3} strokeWidth={1.5} />
+          </View>
+          <Text style={styles.emptyTitle}>Budgets for Members</Text>
+          <Text style={styles.emptySubtitle}>
+            Sign in to set recurring budget goals, track category limits, and sync data across all your devices.
+          </Text>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => navigation.navigate("Settings")}
+          >
+            <Text style={styles.primaryBtnText}>Go to Profile</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
-        <FlatList
-          contentContainerStyle={styles.list}
-          data={budgets}
-          keyExtractor={(item) => item._id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} />}
-          ListEmptyComponent={
-            !user?.token ? (
-              <View style={styles.guestPlaceholder}>
-                <Text style={styles.guestIcon}>🎯</Text>
-                <Text style={styles.emptyTitle}>Budgets are for members</Text>
-                <Text style={styles.emptyText}>Sign in to set monthly limits, track category spending, and keep your finances on target across all your devices.</Text>
-                <TouchableOpacity style={styles.signinBtn} onPress={() => navigation.navigate("Settings")}>
-                  <Text style={styles.signinBtnText}>Go to Profile</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.empty}>
-                <Text style={styles.emptyTitle}>No tracking goals set</Text>
-                <Text style={styles.emptyText}>Tap “Add” to create your first budget.</Text>
-              </View>
-            )
-          }
-          renderItem={({ item }) => (
-            <BudgetCard
-              budget={item}
-              expenses={expenses}
-              onEdit={handleEditBudget}
-              onDelete={handleDeleteBudget}
-            />
-          )}
-        />
+        <View style={styles.emptyContent}>
+          <View style={styles.emptyIconCircle}>
+            <PieChart size={40} color={DESIGN_COLORS.text3} strokeWidth={1.5} />
+          </View>
+          <Text style={styles.emptyTitle}>No targets set</Text>
+          <Text style={styles.emptySubtitle}>
+            Tap the button below to start tracking your spending against monthly or yearly goals.
+          </Text>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={handleAddBudget}
+          >
+            <Text style={styles.primaryBtnText}>Add First Budget</Text>
+          </TouchableOpacity>
+        </View>
       )}
-    </SafeAreaView>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <FlatList
+        data={budgets}
+        keyExtractor={(item) => item._id}
+        ListHeaderComponent={
+          <>
+            {renderHeader()}
+            {renderSummaryCard()}
+            {budgets.length > 0 && (
+              <View style={styles.listHeader}>
+                <Text style={styles.listTitle}>Your Budgets</Text>
+              </View>
+            )}
+          </>
+        }
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={() => void loadData(true)} 
+            tintColor={DESIGN_COLORS.primary} 
+          />
+        }
+        renderItem={({ item }) => (
+          <BudgetCard
+            budget={item}
+            expenses={expenses}
+            onEdit={handleEditBudget}
+            onDelete={handleDeleteBudget}
+          />
+        )}
+        ListEmptyComponent={renderEmptyState}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: DESIGN_COLORS.bg,
+  },
+  headerGradient: {
+    paddingBottom: 40,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+  },
   headerContent: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    marginBottom: 30,
   },
-  title: { fontSize: 28, fontWeight: "900", color: COLORS.text },
-  subtitle: { fontSize: 13, fontWeight: "800", color: COLORS.text3, marginTop: 4 },
-  addButton: {
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  plusButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  summaryContainer: {
+    alignItems: "center",
+  },
+  summaryLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  summaryAmount: {
+    color: "#fff",
+    fontSize: 36,
+    fontWeight: "700",
+  },
+  statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(124, 106, 255, 0.1)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "rgba(124, 106, 255, 0.2)",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    marginTop: 10,
+    gap: 6,
   },
-  addButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.primary,
-  },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 8 },
-  centerText: { color: COLORS.text3, fontWeight: "800" },
-  list: { paddingHorizontal: 16, paddingBottom: 100, gap: 12 },
-  
-  empty: { padding: 18, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface },
-  emptyTitle: { fontSize: 16, fontWeight: "900", color: COLORS.text },
-  emptyText: { fontSize: 13, fontWeight: "700", color: COLORS.text3, marginTop: 4 },
-  
-  guestPlaceholder: { 
-    padding: 30, 
-    borderRadius: 20, 
-    borderWidth: 1, 
-    borderColor: COLORS.border, 
-    backgroundColor: COLORS.surface,
-    alignItems: "center",
-    gap: 12,
-    marginTop: 20
-  },
-  guestIcon: { fontSize: 40, marginBottom: 8 },
-  signinBtn: {
-    marginTop: 8,
-    backgroundColor: COLORS.accent,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: "center",
-  },
-  signinBtnText: {
+  statusText: {
     color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  overlapGroup: {
+    marginTop: -30,
+    paddingHorizontal: 20,
+  },
+  summarySection: {
+    backgroundColor: "#fff",
+    borderRadius: 30,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: DESIGN_COLORS.text,
+  },
+  healthPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  healthText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  summaryCard: {
+    width: "48%",
+    backgroundColor: DESIGN_COLORS.surface2,
+    borderRadius: 20,
+    padding: 15,
+  },
+  cardLabel: {
+    fontSize: 12,
+    color: DESIGN_COLORS.text2,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  cardValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: DESIGN_COLORS.text,
+  },
+  insightBanner: {
+    backgroundColor: "#111827",
+    borderRadius: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    marginTop: 20,
+  },
+  insightLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sparkleBox: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    padding: 6,
+    borderRadius: 8,
+  },
+  insightText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 10,
     fontSize: 14,
+  },
+  listHeader: {
+    marginHorizontal: 20,
+    marginTop: 25,
+    marginBottom: 15,
+  },
+  listTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: DESIGN_COLORS.text,
+  },
+  listContent: {
+    paddingBottom: 40,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: "center",
+    marginTop: 40,
+  },
+  emptyIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: DESIGN_COLORS.surface2,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
     fontWeight: "800",
+    color: DESIGN_COLORS.text,
+    marginBottom: 10,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: DESIGN_COLORS.text2,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 30,
+  },
+  primaryBtn: {
+    backgroundColor: DESIGN_COLORS.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 15,
+    shadowColor: DESIGN_COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  primaryBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  guestState: {
+    alignItems: "center",
+  },
+  emptyContent: {
+    alignItems: "center",
   },
 });

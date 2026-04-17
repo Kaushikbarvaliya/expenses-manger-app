@@ -1,5 +1,6 @@
 import React from "react";
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView } from "react-native";
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { X, TrendingUp, Wallet, Calendar } from "lucide-react-native";
 import { SegmentedControl } from "./SegmentedControl";
 import { COLORS } from "../constants/design";
@@ -27,16 +28,16 @@ export function DatePickerModal({
 }: DatePickerModalProps) {
   const [dateViewMode, setDateViewMode] = React.useState<'month' | 'year'>('month');
   
-  // Always show current date when modal opens
-  const currentDate = React.useMemo(() => new Date(), []);
+  // Use the selected date for display
+  const displayDate = selectedDate;
   
-  const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const yearOptions = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - 2 + i).toString());
+  const monthOptions = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const yearOptions = Array.from({ length: 21 }, (_, i) => (new Date().getFullYear() - 10 + i).toString());
   
   const currentOptions = dateViewMode === 'month' ? monthOptions : yearOptions;
   const currentSelectedIndex = dateViewMode === 'month' 
-    ? currentDate.getMonth() 
-    : yearOptions.indexOf(currentDate.getFullYear().toString());
+    ? displayDate.getMonth() 
+    : yearOptions.indexOf(displayDate.getFullYear().toString());
 
   const handleDateSelect = (index: number) => {
     const newDate = new Date(selectedDate);
@@ -70,10 +71,11 @@ export function DatePickerModal({
               <Calendar size={20} color={COLORS.primary} />
               <Text style={styles.currentDateText}>
                 {dateViewMode === 'month' 
-                  ? currentDate.toLocaleDateString("en-US", { 
-                      month: "long" 
+                  ? displayDate.toLocaleDateString("en-US", { 
+                      month: "long",
+                      year: "numeric"
                     })
-                  : currentDate.getFullYear().toString()
+                  : displayDate.getFullYear().toString()
                 }
               </Text>
             </View>
@@ -112,15 +114,47 @@ export function DatePickerModal({
               </TouchableOpacity>
             </View>
 
-            <SegmentedControl
-              options={currentOptions}
-              selectedIndex={currentSelectedIndex}
-              onSelect={handleDateSelect}
-              backgroundColor="#F3F4F6"
-              activeColor={COLORS.primary}
-              textColor={COLORS.text3}
-              activeTextColor="#fff"
-            />
+            {dateViewMode === 'month' ? (
+              <View style={styles.monthGrid}>
+                {monthOptions.map((month, index) => (
+                  <TouchableOpacity
+                    key={month}
+                    style={[
+                      styles.monthItem,
+                      currentSelectedIndex === index && styles.monthItemSelected
+                    ]}
+                    onPress={() => handleDateSelect(index)}
+                  >
+                    <Text style={[
+                      styles.monthText,
+                      currentSelectedIndex === index && styles.monthTextSelected
+                    ]}>
+                      {month.slice(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.yearGrid}>
+                {yearOptions.map((year, index) => (
+                  <TouchableOpacity
+                    key={year}
+                    style={[
+                      styles.yearItem,
+                      currentSelectedIndex === index && styles.yearItemSelected
+                    ]}
+                    onPress={() => handleDateSelect(index)}
+                  >
+                    <Text style={[
+                      styles.yearText,
+                      currentSelectedIndex === index && styles.yearTextSelected
+                    ]}>
+                      {year.slice(-2)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Financial Summary */}
@@ -296,5 +330,67 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#111827",
+  },
+  monthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+  monthItem: {
+    width: "30%",
+    aspectRatio: 1.2,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  monthItemSelected: {
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  monthText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text3,
+  },
+  monthTextSelected: {
+    color: "#fff",
+  },
+  yearGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 16,
+  },
+  yearItem: {
+    width: "18%",
+    aspectRatio: 1,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  yearItemSelected: {
+    backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  yearText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text3,
+  },
+  yearTextSelected: {
+    color: "#fff",
   },
 });

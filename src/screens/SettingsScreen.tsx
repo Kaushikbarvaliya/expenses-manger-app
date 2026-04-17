@@ -158,6 +158,17 @@ export function SettingsScreen({ navigation }: any) {
           )}
         </View>
 
+        {/* Automation Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>⚙️ Automation</Text>
+          <TouchableOpacity 
+             style={styles.secondaryBtn} 
+             onPress={() => navigation.navigate("RecurringList")}
+          >
+             <Text style={styles.secondaryBtnText}>Manage Recurring Transactions</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Notifications Card */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>🔔 Notifications</Text>

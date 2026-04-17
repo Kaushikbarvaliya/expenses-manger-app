@@ -3,6 +3,7 @@ import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import transactionReducer from './slices/transactionSlice';
 import settingsReducer from './slices/settingsSlice';
+import recurringReducer from './slices/recurringSlice';
 
 const migrations: any = {
   // Version 1: migrate from old guest/byUserId shape to guestTransactions/userTransactions
@@ -29,13 +30,14 @@ const persistConfig = {
   key: 'root',
   version: 1,
   storage: AsyncStorage,
-  whitelist: ['transactions', 'settings'],
+  whitelist: ['transactions', 'settings', 'recurring'],
   migrate: createMigrate(migrations, { debug: false }),
 };
 
 const rootReducer = combineReducers({
   transactions: transactionReducer,
   settings: settingsReducer,
+  recurring: recurringReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
