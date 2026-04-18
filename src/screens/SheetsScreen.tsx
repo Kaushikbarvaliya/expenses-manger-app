@@ -211,8 +211,8 @@ export function SheetsScreen({ navigation, route }: Props) {
           <Text style={styles.sheetHint}>{hint}</Text>
           <View style={styles.cardActions}>
             {(kind === "owned" || role === "Admin") && (
-              <TouchableOpacity 
-                style={styles.inviteBtn} 
+              <TouchableOpacity
+                style={styles.inviteBtn}
                 onPress={() => openInvite(sheet)}
                 disabled={disabled}
               >
@@ -255,8 +255,8 @@ export function SheetsScreen({ navigation, route }: Props) {
                   </Text>
                 </View>
                 <View style={styles.headerActions}>
-                  <TouchableOpacity 
-                    style={styles.headerInviteBtn} 
+                  <TouchableOpacity
+                    style={styles.headerInviteBtn}
                     onPress={() => {
                       if (sheets.length > 0) {
                         setInviteSheetId(null); // Signal global invite (needs selection)
@@ -371,7 +371,7 @@ export function SheetsScreen({ navigation, route }: Props) {
         <Modal visible={showInviteModal} transparent animationType="slide">
           <TouchableWithoutFeedback onPress={() => setShowInviteModal(false)}>
             <View style={styles.modalOverlay}>
-              <KeyboardAvoidingView 
+              <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={styles.modalContent}
               >
@@ -390,8 +390,8 @@ export function SheetsScreen({ navigation, route }: Props) {
                         <Text style={styles.inputLabel}>Select Sheet</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sheetSelectorScroll}>
                           {sheets.filter(s => s.isOwner).map((s) => (
-                            <TouchableOpacity 
-                              key={s.sheetId} 
+                            <TouchableOpacity
+                              key={s.sheetId}
                               style={[styles.sheetSelectorChip, inviteSheetId === s.sheetId && styles.sheetSelectorChipActive]}
                               onPress={() => setInviteSheetId(s.sheetId)}
                             >
@@ -417,13 +417,13 @@ export function SheetsScreen({ navigation, route }: Props) {
 
                     <Text style={styles.inputLabel}>Assign Role</Text>
                     <View style={styles.roleGrid}>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={[styles.roleOption, inviteRole === "member" && styles.roleOptionActive]}
                         onPress={() => setInviteRole("member")}
                       >
                         <Text style={[styles.roleOptionText, inviteRole === "member" && styles.roleOptionTextActive]}>Member</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={[styles.roleOption, inviteRole === "admin" && styles.roleOptionActive]}
                         onPress={() => setInviteRole("admin")}
                       >
@@ -431,7 +431,7 @@ export function SheetsScreen({ navigation, route }: Props) {
                       </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.modalActionBtn, (!inviteEmail.trim() || inviting) && styles.modalActionBtnDisabled]}
                       onPress={() => void handleSendInvite()}
                       disabled={!inviteEmail.trim() || inviting}
@@ -495,14 +495,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.FONTS.weight.black,
     letterSpacing: 0.7,
   },
-  title: { 
+  title: {
     ...theme.TYPOGRAPHY.h1,
-    letterSpacing: -0.6 
+    letterSpacing: -0.6
   },
-  subtitle: { 
+  subtitle: {
     ...theme.TYPOGRAPHY.body,
-    marginTop: theme.SPACING.base, 
-    maxWidth: 520 
+    marginTop: theme.SPACING.base,
+    maxWidth: 520
   },
   secondaryButton: {
     ...theme.COMPONENT_STYLES.buttonGhost,
@@ -512,9 +512,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.SPACING.lg,
     paddingHorizontal: theme.SPACING.xl,
   },
-  secondaryButtonText: { 
+  secondaryButtonText: {
     ...theme.TYPOGRAPHY.buttonText,
-    color: theme.COLORS.text 
+    color: theme.COLORS.text
   },
 
   successBanner: {
@@ -524,11 +524,11 @@ const styles = StyleSheet.create({
     borderColor: `${theme.COLORS.success}30`,
     marginBottom: theme.SPACING.xl,
   },
-  successBannerText: { 
+  successBannerText: {
     ...theme.TYPOGRAPHY.caption,
     color: theme.COLORS.success,
     fontWeight: theme.FONTS.weight.black,
-    lineHeight: 18 
+    lineHeight: 18
   },
   errorBanner: {
     ...theme.COMPONENT_STYLES.card,
@@ -537,11 +537,11 @@ const styles = StyleSheet.create({
     borderColor: `${theme.COLORS.error}30`,
     marginBottom: theme.SPACING.xl,
   },
-  errorBannerText: { 
+  errorBannerText: {
     ...theme.TYPOGRAPHY.caption,
     color: theme.COLORS.error,
     fontWeight: theme.FONTS.weight.black,
-    lineHeight: 18 
+    lineHeight: 18
   },
 
   createCard: {
@@ -550,10 +550,10 @@ const styles = StyleSheet.create({
     gap: theme.SPACING.xl,
   },
   createTitle: { ...theme.TYPOGRAPHY.cardTitle },
-  createSubtitle: { 
+  createSubtitle: {
     ...theme.TYPOGRAPHY.cardSubtitle,
     marginTop: theme.SPACING.base,
-    lineHeight: 18 
+    lineHeight: 18
   },
   createActions: { gap: theme.SPACING.lg },
   createInput: {
@@ -577,9 +577,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.SPACING.xl,
   },
-  loadingText: { 
+  loadingText: {
     ...theme.TYPOGRAPHY.body,
-    fontWeight: theme.FONTS.weight.medium 
+    fontWeight: theme.FONTS.weight.medium
   },
 
   list: { gap: theme.SPACING.xl },
@@ -588,15 +588,15 @@ const styles = StyleSheet.create({
     borderRadius: theme.BORDER_RADIUS["5xl"],
     gap: theme.SPACING["3xl"],
   },
-  sectionHeader: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    justifyContent: "space-between", 
-    gap: theme.SPACING.base 
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: theme.SPACING.base
   },
-  sectionTitle: { 
+  sectionTitle: {
     ...theme.TYPOGRAPHY.h3,
-    color: theme.COLORS.text 
+    color: theme.COLORS.text
   },
   sectionMetaPill: {
     backgroundColor: theme.COLORS.surface2,
@@ -604,9 +604,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.SPACING.xs,
     paddingHorizontal: theme.SPACING.sm,
   },
-  sectionMetaText: { 
+  sectionMetaText: {
     ...theme.TYPOGRAPHY.caption,
-    color: theme.COLORS.text2 
+    color: theme.COLORS.text2
   },
 
   emptyState: {
@@ -615,26 +615,26 @@ const styles = StyleSheet.create({
     backgroundColor: theme.COLORS.background,
     padding: theme.SPACING.lg,
   },
-  emptyStateText: { 
+  emptyStateText: {
     ...theme.TYPOGRAPHY.caption,
     color: theme.COLORS.text2,
-    lineHeight: 18 
+    lineHeight: 18
   },
   sheetCardDisabled: { opacity: 0.7 },
-  sheetCardTop: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "flex-start", 
-    gap: theme.SPACING.lg 
+  sheetCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: theme.SPACING.lg
   },
-  sheetTitle: { 
+  sheetTitle: {
     ...theme.TYPOGRAPHY.cardTitle,
-    fontSize: theme.FONTS.size.lg 
+    fontSize: theme.FONTS.size.lg
   },
-  sheetMeta: { 
-    marginTop: theme.SPACING.xs, 
+  sheetMeta: {
+    marginTop: theme.SPACING.xs,
     ...theme.TYPOGRAPHY.caption,
-    fontWeight: theme.FONTS.weight.semibold 
+    fontWeight: theme.FONTS.weight.semibold
   },
   roleBadge: {
     borderRadius: theme.BORDER_RADIUS.full,
@@ -643,28 +643,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.SPACING.sm,
     alignSelf: "flex-start",
   },
-  roleBadgeText: { 
+  roleBadgeText: {
     ...theme.TYPOGRAPHY.caption,
     color: theme.COLORS.primary,
-    fontWeight: theme.FONTS.weight.black 
+    fontWeight: theme.FONTS.weight.black
   },
   ownerBadge: { backgroundColor: `${theme.COLORS.success}15` },
   ownerBadgeText: { color: theme.COLORS.success },
-  sheetCardBottom: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "flex-end", 
-    gap: theme.SPACING.sm 
+  sheetCardBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: theme.SPACING.sm
   },
-  sheetHint: { 
-    flex: 1, 
+  sheetHint: {
+    flex: 1,
     ...theme.TYPOGRAPHY.caption,
     lineHeight: 18,
-    fontWeight: theme.FONTS.weight.semibold 
+    fontWeight: theme.FONTS.weight.semibold
   },
-  openLabel: { 
+  openLabel: {
     ...theme.TYPOGRAPHY.caption,
-    fontWeight: theme.FONTS.weight.black 
+    fontWeight: theme.FONTS.weight.black
   },
 
   // New Invite Styles
@@ -686,14 +686,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  cardActions: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 15 
+  cardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 15
   },
-  inviteBtn: { 
-    flexDirection: "row", 
-    alignItems: "center", 
+  inviteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     backgroundColor: theme.COLORS.primary + "15",
     paddingVertical: 8,
@@ -702,10 +702,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.COLORS.primary + "30",
   },
-  inviteBtnText: { 
-    fontSize: 12, 
-    fontWeight: "800", 
-    color: theme.COLORS.primary 
+  inviteBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: theme.COLORS.primary
   },
 
   // Modal Styles
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
     ...theme.TYPOGRAPHY.buttonText,
     fontSize: theme.FONTS.size.sm,
   },
-  
+
   // Sheet Selector Styles
   sheetSelectorScroll: {
     gap: theme.SPACING.sm,

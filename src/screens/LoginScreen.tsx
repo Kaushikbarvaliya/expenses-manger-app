@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList, StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
-import { getStoredUser, setStoredUser, getActiveSheetId } from "../storage/auth";
+import { getStoredUser, setStoredUser, getActiveSheetId, setActiveSheetId } from "../storage/auth";
 import { getGuestId } from "../storage/auth";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
@@ -51,11 +51,11 @@ export function LoginScreen({ navigation }: Props) {
 
   const handleSheetSelected = async (sheetId: string, sheetName: string) => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       const currentGuestId = await getGuestId();
-      
+
       // Use the new merge-guest-data endpoint with selected sheet
       const mergeResult = await apiFetch("/auth/merge-guest-data", {
         method: "POST",
@@ -69,11 +69,11 @@ export function LoginScreen({ navigation }: Props) {
       });
 
       const { results } = mergeResult as { results: { expensesMerged: number; expensesSkipped: number; incomesMerged: number; incomesSkipped: number; errors: string[] } };
-      
+
       // Show merge results to user
       const totalMerged = results.expensesMerged + results.incomesMerged;
       const totalSkipped = results.expensesSkipped + results.incomesSkipped;
-      
+
       if (totalMerged > 0) {
         let message = `Successfully merged ${totalMerged} transaction(s) into "${sheetName}"`;
         if (totalSkipped > 0) {
@@ -85,8 +85,10 @@ export function LoginScreen({ navigation }: Props) {
         Alert.alert("Merge Complete", message);
       }
 
+      // Set active sheet and navigate to App immediately
+      await setActiveSheetId(sheetId);
       dispatch(login());
-      navigation.replace("Sheets");
+      navigation.replace("App");
     } catch (syncErr: unknown) {
       const message = syncErr instanceof Error ? syncErr.message : "Sync failed";
       Alert.alert("Sync Error", `Could not sync guest data: ${message}. You are logged in but guest data was not merged.`);
@@ -252,19 +254,19 @@ export function LoginScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safe: theme.COMPONENT_STYLES.safeArea,
-  container: { 
-    ...theme.COMPONENT_STYLES.screen, 
-    justifyContent: "center" 
+  container: {
+    ...theme.COMPONENT_STYLES.screen,
+    justifyContent: "center"
   },
   card: {
     ...theme.COMPONENT_STYLES.cardLarge,
     gap: theme.SPACING.xl,
   },
-  brandRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: theme.SPACING.lg, 
-    marginBottom: theme.SPACING.base 
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.SPACING.lg,
+    marginBottom: theme.SPACING.base
   },
   brandIcon: {
     width: 34,
@@ -272,17 +274,17 @@ const styles = StyleSheet.create({
     borderRadius: theme.BORDER_RADIUS.xl,
     backgroundColor: theme.COLORS.primary,
   },
-  brandName: { 
+  brandName: {
     ...theme.TYPOGRAPHY.h5,
-    color: theme.COLORS.text 
+    color: theme.COLORS.text
   },
-  title: { 
+  title: {
     ...theme.TYPOGRAPHY.h2,
-    letterSpacing: -0.4 
+    letterSpacing: -0.4
   },
-  subtitle: { 
-    ...theme.TYPOGRAPHY.body, 
-    marginBottom: theme.SPACING.lg 
+  subtitle: {
+    ...theme.TYPOGRAPHY.body,
+    marginBottom: theme.SPACING.lg
   },
   field: { gap: theme.SPACING.base },
   label: theme.TYPOGRAPHY.label,
@@ -293,37 +295,37 @@ const styles = StyleSheet.create({
   },
   primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: theme.TYPOGRAPHY.button,
-  linkButton: { 
-    paddingVertical: theme.SPACING.base, 
-    alignItems: "center" 
+  linkButton: {
+    paddingVertical: theme.SPACING.base,
+    alignItems: "center"
   },
-  linkText: { 
+  linkText: {
     ...theme.TYPOGRAPHY.link,
-    fontSize: theme.FONTS.size.sm 
+    fontSize: theme.FONTS.size.sm
   },
-  dividerRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: theme.SPACING.lg, 
-    marginVertical: theme.SPACING.base 
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.SPACING.lg,
+    marginVertical: theme.SPACING.base
   },
-  dividerLine: { 
-    flex: 1, 
-    height: 1, 
-    backgroundColor: theme.COLORS.border 
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.COLORS.border
   },
-  dividerText: { 
+  dividerText: {
     ...theme.TYPOGRAPHY.caption,
-    fontWeight: theme.FONTS.weight.semibold 
+    fontWeight: theme.FONTS.weight.semibold
   },
   guestButton: {
     ...theme.COMPONENT_STYLES.buttonOutline,
     borderWidth: 2,
     backgroundColor: theme.COLORS.surface2,
   },
-  guestButtonText: { 
+  guestButtonText: {
     ...theme.TYPOGRAPHY.buttonText,
     color: theme.COLORS.text2,
-    fontWeight: theme.FONTS.weight.black 
+    fontWeight: theme.FONTS.weight.black
   },
 });

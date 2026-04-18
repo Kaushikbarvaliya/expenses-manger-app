@@ -29,12 +29,12 @@ import {
 } from "lucide-react-native";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
-import { getActiveSheetId, getStoredUser } from "../storage/auth";
+import { getActiveSheetId, getStoredUser, getGuestId } from "../storage/auth";
 import { CATEGORIES, INCOME_SOURCES, COLORS } from "../constants/design";
-import { MonthPickerModal } from "../components/MonthPickerModal";
+import { AppDatePicker } from "../components/AppDatePicker";
 import { SegmentedControl } from "../components/SegmentedControl";
-import { DatePickerModal } from "../components/DatePickerModal";
 import { useCurrency } from "../context/CurrencyContext";
+import theme from "../theme/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -64,22 +64,20 @@ export function DashboardScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showOptions, setShowOptions] = useState<string | null>(null);
-  
+
   const { expenses, incomes } = useAppSelector(selectActiveTransactions);
 
   // Date Filtering State
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
-  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   const [dateViewMode, setDateViewMode] = useState<'month' | 'year'>('month');
 
   // Generate months and years for segmented control
   const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const yearOptions = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - 2 + i).toString());
-  
+
   const currentOptions = dateViewMode === 'month' ? monthOptions : yearOptions;
-  const currentSelectedIndex = dateViewMode === 'month' 
-    ? selectedDate.getMonth() 
+  const currentSelectedIndex = dateViewMode === 'month'
+    ? selectedDate.getMonth()
     : yearOptions.indexOf(selectedDate.getFullYear().toString());
 
   useEffect(() => {
@@ -96,17 +94,25 @@ export function DashboardScreen({ navigation }: any) {
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
-    
-    // If user is logged in, fetch data from API
-    if (user?.token) {
+
+    // Fetch from API if user is logged in OR has a guest ID
+    const currentGuestId = !user?.token ? await getGuestId() : undefined;
+
+    if (user?.token || currentGuestId) {
       try {
         const [expRes, incRes] = await Promise.all([
-          apiFetch<Omit<Expense, "type">[]>("/expenses", { token: user.token, sheetId: sheetId || undefined }),
-          apiFetch<Omit<Income, "type">[]>("/incomes", { token: user.token, sheetId: sheetId || undefined }),
+          apiFetch<Omit<Expense, "type">[]>("/expenses", {
+            token: user?.token,
+            sheetId: sheetId || undefined
+          }),
+          apiFetch<Omit<Income, "type">[]>("/incomes", {
+            token: user?.token,
+            sheetId: sheetId || undefined
+          }),
         ]);
         const mappedExp: Expense[] = (Array.isArray(expRes) ? expRes : []).map(e => ({ ...e, type: "expense" as const }));
         const mappedInc: Income[] = (Array.isArray(incRes) ? incRes : []).map(i => ({ ...i, type: "income" as const }));
-        
+
         // Update Redux store with API data
         dispatch(setTransactions({ expenses: mappedExp, incomes: mappedInc }));
       } catch (e: unknown) {
@@ -115,7 +121,7 @@ export function DashboardScreen({ navigation }: any) {
     }
     // If user is not logged in, we don't need to fetch from API
     // The guest data will be automatically available from Redux state
-    
+
     if (isRefresh) setRefreshing(false);
   }, [sheetId, user?.token, dispatch]);
 
@@ -240,12 +246,14 @@ export function DashboardScreen({ navigation }: any) {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.dateDisplayButton} onPress={() => setShowDatePickerModal(true)}>
-            <Text style={styles.dateDisplayText}>
-              {selectedDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-            </Text>
-            <ChevronRight size={14} color="#fff" style={{ transform: [{ rotate: "90deg" }], marginLeft: 4 }} />
-          </TouchableOpacity>
+          <View style={styles.datePickerContainer}>
+            <AppDatePicker
+              value={selectedDate.toISOString()}
+              onChange={(iso) => setSelectedDate(new Date(iso))}
+              mode="month"
+              allowModeSwitch={true}
+            />
+          </View>
 
           <TouchableOpacity style={styles.notificationBtn}>
             <Bell size={22} color="#fff" strokeWidth={2} />
@@ -277,7 +285,7 @@ export function DashboardScreen({ navigation }: any) {
       <View style={styles.summarySection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Money</Text>
-          <TouchableOpacity style={styles.detailsBtnContainer} onPress={() => navigation.navigate("Recurring")}>
+          <TouchableOpacity style={styles.detailsBtnContainer} onPress={() => navigation.navigate("Report")}>
             <Text style={styles.detailsBtn}>Details</Text>
             <ChevronRight size={12} color="#9CA3AF" />
           </TouchableOpacity>
@@ -422,24 +430,6 @@ export function DashboardScreen({ navigation }: any) {
           </View>
         }
       />
-
-      <DatePickerModal
-        visible={showDatePickerModal}
-        onClose={() => setShowDatePickerModal(false)}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        totalIncome={totalIncome}
-        totalExpense={totalExpense}
-        balance={balance}
-        formatAmount={formatAmount}
-      />
-
-      <MonthPickerModal
-        visible={showPicker}
-        selectedDate={selectedDate}
-        onClose={() => setShowPicker(false)}
-        onSelect={(date) => setSelectedDate(date)}
-      />
     </View>
   );
 }
@@ -498,6 +488,11 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 14,
+  },
+  datePickerContainer: {
+    flex: 1,
+    marginHorizontal: 15,
+    marginBottom: -theme.SPACING.lg, // offset AppDatePicker bottom margin
   },
   monthText: {
     color: "#fff",

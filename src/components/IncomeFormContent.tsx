@@ -37,6 +37,8 @@ export function IncomeFormContent({ navigation }: any) {
   const [method, setMethod] = useState("salary");
   const [note, setNote] = useState("");
   const [member, setMember] = useState("");
+  const [recurring, setRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
 
   const [familyMembers, setFamilyMembers] = useState<any[]>([{ _id: "self", name: "Me" }]);
 
@@ -78,7 +80,7 @@ export function IncomeFormContent({ navigation }: any) {
 
   // Parity isValid
   const numAmount = parseFloat(amount);
-  const isValid = amount !== "" && !isNaN(numAmount) && numAmount > 0 && Boolean(member) && (source !== "other" || customSourceName.trim().length > 0);
+  const isValid = amount !== "" && !isNaN(numAmount) && numAmount > 0 && Boolean(member) && (source !== "other" || customSourceName.trim().length > 0) && (!recurring || Boolean(frequency));
 
   const handleSave = async () => {
     if (!isValid || saving) return;
@@ -99,22 +101,30 @@ export function IncomeFormContent({ navigation }: any) {
 
       dispatch(addTransaction(payload));
 
-      // Try sending to server if online (optional, ignoring fail)
+      // Try sending to server if online (including guest mode)
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        if (u?.token) {
-           const body = {
-             name: payload.name, amount: payload.amount, source: payload.source, date: payload.date,
-             method: payload.method, memberId: member, note: note.trim() || undefined,
-           };
-           await apiFetch(`/incomes`, {
-             method: "POST",
-             token: u.token,
-             sheetId: sid || undefined,
-             body: JSON.stringify(body),
-           });
-        }
+        
+        const body = {
+          name: payload.name, 
+          amount: payload.amount, 
+          source: payload.source, 
+          date: payload.date,
+          method: payload.method, 
+          memberId: member, 
+          note: note.trim() || undefined,
+          recurring,
+          frequency: recurring ? frequency : undefined,
+        };
+
+        // If guest, apiFetch will automatically attach x-guest-id
+        await apiFetch(`/incomes`, {
+          method: "POST",
+          token: u?.token, // Might be undefined for guest
+          sheetId: sid || undefined,
+          body: JSON.stringify(body),
+        });
       } catch (e) {
          // Silently fail API
       }
@@ -266,6 +276,42 @@ export function IncomeFormContent({ navigation }: any) {
           />
         </View>
 
+        <TouchableOpacity 
+            style={[styles.formGroup, { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: recurring ? 12 : 24 }]}
+            onPress={() => setRecurring(!recurring)}
+            activeOpacity={0.7}
+        >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={[styles.checkbox, recurring && styles.checkboxChecked]}>
+                    {recurring && <Text style={{ color: "#fff", fontSize: 14 }}>✓</Text>}
+                </View>
+                <View>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.text }}>Recurring Income</Text>
+                    <Text style={{ fontSize: 12, color: COLORS.text3, marginTop: 2 }}>Automatically add this every {frequency}</Text>
+                </View>
+            </View>
+        </TouchableOpacity>
+
+        {recurring && (
+            <View style={styles.recurringBox}>
+                <Text style={styles.label}>Frequency</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <TouchableOpacity style={[styles.freqBtn, frequency === "daily" && styles.freqBtnSel]} onPress={() => setFrequency("daily")}>
+                        <Text style={[styles.freqText, frequency === "daily" && styles.freqTextSel]}>Daily</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.freqBtn, frequency === "weekly" && styles.freqBtnSel]} onPress={() => setFrequency("weekly")}>
+                        <Text style={[styles.freqText, frequency === "weekly" && styles.freqTextSel]}>Weekly</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.freqBtn, frequency === "monthly" && styles.freqBtnSel]} onPress={() => setFrequency("monthly")}>
+                        <Text style={[styles.freqText, frequency === "monthly" && styles.freqTextSel]}>Monthly</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.freqBtn, frequency === "yearly" && styles.freqBtnSel]} onPress={() => setFrequency("yearly")}>
+                        <Text style={[styles.freqText, frequency === "yearly" && styles.freqTextSel]}>Yearly</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        )}
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -339,6 +385,13 @@ const styles = StyleSheet.create({
   memberChipSelected: { backgroundColor: COLORS.green, borderColor: COLORS.green },
   memberChipText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
   memberChipTextSelected: { color: "#fff" },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.border, backgroundColor: COLORS.surface, justifyContent: "center", alignItems: "center" },
+  checkboxChecked: { backgroundColor: COLORS.green, borderColor: COLORS.green },
+  recurringBox: { padding: 12, backgroundColor: COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginBottom: 20 },
+  freqBtn: { flex: 1, minWidth: "45%", paddingVertical: 10, borderRadius: 10, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: "center" },
+  freqBtnSel: { borderColor: COLORS.green, backgroundColor: "rgba(5, 150, 105, 0.15)" },
+  freqText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
+  freqTextSel: { color: COLORS.green },
   footer: {
     padding: 24, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.surface
   },

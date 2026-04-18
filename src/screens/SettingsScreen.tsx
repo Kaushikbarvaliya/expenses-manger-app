@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Switch
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { clearStoredUser, getStoredUser } from "../storage/auth";
@@ -22,7 +21,7 @@ export function SettingsScreen({ navigation }: any) {
   const [user, setUser] = useState<StoredUser | null>(null);
   const { currency, setCurrency } = useCurrency();
   const dispatch = useAppDispatch();
-  
+
   // Dummy toggle states for parity
   const [notifications, setNotifications] = useState({
     budget: true,
@@ -66,7 +65,9 @@ export function SettingsScreen({ navigation }: any) {
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>👤 Profile</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionTitle}>👤 Profile</Text>
+          </View>
           <View style={styles.guestBanner}>
             <Text style={styles.guestIcon}>🔓</Text>
             <Text style={styles.guestTitle}>You're browsing as a Guest</Text>
@@ -89,11 +90,15 @@ export function SettingsScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        
+
         {/* Profile Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>👤 Profile</Text>
-          
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionTitle}>👤 Profile</Text>
+            <TouchableOpacity style={styles.logoutBtn} onPress={() => void logoutAction()}>
+              <Text style={styles.logoutBtnText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
           {isGuest ? (
             <View style={styles.guestBanner}>
               <Text style={styles.guestIcon}>🔓</Text>
@@ -136,43 +141,43 @@ export function SettingsScreen({ navigation }: any) {
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Currency</Text>
                 <View style={styles.currencyToggleRow}>
-                  <TouchableOpacity 
-                    style={[styles.currencyBtn, currency === "INR" && styles.currencyBtnActive]} 
+                  <TouchableOpacity
+                    style={[styles.currencyBtn, currency === "INR" && styles.currencyBtnActive]}
                     onPress={() => setCurrency("INR")}
                   >
                     <Text style={[styles.currencyBtnText, currency === "INR" && styles.currencyBtnTextActive]}>₹ INR</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.currencyBtn, currency === "USD" && styles.currencyBtnActive]} 
+                  <TouchableOpacity
+                    style={[styles.currencyBtn, currency === "USD" && styles.currencyBtnActive]}
                     onPress={() => setCurrency("USD")}
                   >
                     <Text style={[styles.currencyBtnText, currency === "USD" && styles.currencyBtnTextActive]}>$ USD</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-
-               <TouchableOpacity style={styles.logoutBtn} onPress={() => void logoutAction()}>
-                 <Text style={styles.logoutBtnText}>Sign Out</Text>
-               </TouchableOpacity>
             </>
           )}
         </View>
 
         {/* Automation Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>⚙️ Automation</Text>
-          <TouchableOpacity 
-             style={styles.secondaryBtn} 
-             onPress={() => navigation.navigate("RecurringList")}
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionTitle}>⚙️ Automation</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate("RecurringList")}
           >
-             <Text style={styles.secondaryBtnText}>Manage Recurring Transactions</Text>
+            <Text style={styles.secondaryBtnText}>Manage Recurring Transactions</Text>
           </TouchableOpacity>
         </View>
 
         {/* Notifications Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>🔔 Notifications</Text>
-          
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionTitle}>🔔 Notifications</Text>
+          </View>
+
           {[
             { key: "budget", label: "Budget alerts" },
             { key: "weekly", label: "Weekly summary email" },
@@ -181,24 +186,20 @@ export function SettingsScreen({ navigation }: any) {
           ].map((item) => (
             <View key={item.key} style={styles.toggleRow}>
               <Text style={styles.toggleLabel}>{item.label}</Text>
-              <Switch
-                trackColor={{ false: COLORS.border, true: COLORS.accent }}
-                thumbColor={"#fff"}
-                onValueChange={(val) => setNotifications(prev => ({ ...prev, [item.key]: val }))}
-                value={(notifications as any)[item.key]}
-              />
             </View>
           ))}
         </View>
 
         {/* Security Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>🔐 Security</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionTitle}>🔐 Security</Text>
+          </View>
           <TouchableOpacity style={styles.secondaryBtn} onPress={handleChangePassword}>
-             <Text style={styles.secondaryBtnText}>Change Password</Text>
+            <Text style={styles.secondaryBtnText}>Change Password</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.logoutBtn, { width: "100%", marginTop: 8 }]} onPress={() => Alert.alert("Delete Account", "Contact support to delete account from mobile app.")}>
-             <Text style={styles.logoutBtnText}>Delete Account</Text>
+            <Text style={styles.logoutBtnText}>Delete Account</Text>
           </TouchableOpacity>
         </View>
 
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
   pageTitle: { fontSize: 28, fontWeight: "900", color: COLORS.text },
   scroll: { paddingHorizontal: 16, paddingBottom: 40, gap: 16 },
-  
+
   card: {
     borderRadius: 18,
     borderWidth: 1,
@@ -221,8 +222,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     padding: 20,
   },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text, marginBottom: 20 },
-  
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  sectionTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
+
   avatarRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 24 },
   avatar: {
     width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.accent,
@@ -249,8 +256,8 @@ const styles = StyleSheet.create({
   },
 
   logoutBtn: {
-    backgroundColor: COLORS.red, paddingVertical: 14, borderRadius: 12,
-    alignItems: "center", alignSelf: "flex-start", paddingHorizontal: 24
+    backgroundColor: COLORS.red, paddingVertical: 8, borderRadius: 10,
+    alignItems: "center", alignSelf: "flex-start", paddingHorizontal: 16
   },
   logoutBtnText: { color: "#fff", fontSize: 13, fontWeight: "800" },
 
@@ -265,7 +272,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border
   },
   toggleLabel: { fontSize: 14, fontWeight: "600", color: COLORS.text },
-  
+
   // Currency Toggle Styles
   currencyToggleRow: {
     flexDirection: "row",

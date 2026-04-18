@@ -43,49 +43,45 @@ export function RecurringCard({ item, onEdit, onDelete, onToggle }: RecurringCar
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <TouchableOpacity
-          style={styles.mainContent}
-          onPress={onEdit}
-          activeOpacity={0.7}
-        >
-          {/* Icon Section */}
-          <View style={[styles.iconContainer, { backgroundColor: meta.color + "15" }]}>
-            <Text style={styles.emojiIcon}>{meta.icon}</Text>
-          </View>
+        <View style={styles.mainRow}>
+          <TouchableOpacity
+            style={styles.mainContent}
+            onPress={onEdit}
+            activeOpacity={0.7}
+          >
+            {/* Icon Section */}
+            <View style={[styles.iconContainer, { backgroundColor: meta.color + "15" }]}>
+              <Text style={styles.emojiIcon}>{meta.icon}</Text>
+            </View>
 
-          {/* Details Section */}
-          <View style={styles.details}>
-            <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
-            <View style={styles.metaRow}>
-              <View style={styles.badge}>
-                <Repeat size={10} color={DESIGN_COLORS.text3} />
-                <Text style={styles.badgeText}>{item.frequency}</Text>
-              </View>
-              <Text style={styles.dot}>·</Text>
-              <View style={styles.badge}>
-                <Clock size={10} color={DESIGN_COLORS.text3} />
-                <Text style={styles.badgeText}>Next: {nextDateFormatted}</Text>
+            {/* Details Section */}
+            <View style={styles.details}>
+              <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+              <View style={styles.metaRow}>
+                <View style={styles.badge}>
+                  <Repeat size={10} color={DESIGN_COLORS.text3} />
+                  <Text style={styles.badgeText}>{item.frequency}</Text>
+                </View>
+                <Text style={styles.dot}>·</Text>
+                <View style={styles.badge}>
+                  <Clock size={10} color={DESIGN_COLORS.text3} />
+                  <Text style={styles.badgeText}>Next: {nextDateFormatted}</Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* Amount Section */}
-          <View style={styles.amountContainer}>
-            <Text style={[styles.amount, { color: isExp ? DESIGN_COLORS.red : DESIGN_COLORS.green }]}>
-              {isExp ? "-" : "+"}{formatAmount(item.amount)}
-            </Text>
-            <View style={styles.toggleRow}>
-              <Switch
-                value={item.isActive}
-                onValueChange={onToggle}
-                trackColor={{ false: "#E2E8F0", true: DESIGN_COLORS.primary }}
-                thumbColor="#fff"
-                ios_backgroundColor="#E2E8F0"
-                style={{ transform: [{ scaleX: 0.65 }, { scaleY: 0.65 }] }}
-              />
+            {/* Amount Section */}
+            <View style={styles.amountContainer}>
+              <Text style={[styles.amount, { color: isExp ? DESIGN_COLORS.red : DESIGN_COLORS.green }]}>
+                {isExp ? "-" : "+"}{formatAmount(item.amount)}
+              </Text>
             </View>
+          </TouchableOpacity>
+
+          <View style={styles.toggleRow}>
+
           </View>
-        </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={styles.optionsButton}
@@ -138,6 +134,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 5,
     elevation: 2,
+  },
+  mainRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
   mainContent: {
     flex: 1,
@@ -194,8 +195,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   toggleRow: {
-    marginTop: -4,
-    marginRight: -8,
+    marginLeft: 10,
+    marginRight: -4,
   },
   optionsButton: {
     padding: 8,

@@ -30,6 +30,7 @@ export type RootStackParamList = {
   AddTransaction: { mode: "add" } | { mode: "edit"; id: string; type: "expense" | "income" };
   RecurringList: undefined;
   AddEditRecurring: { mode: "add" } | { mode: "edit"; id: string };
+  Report: undefined;
 };
 
 export type TabParamList = {

@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = "http://192.168.1.12:8000/api";
+const DEFAULT_API_BASE = "http://192.168.1.13:8000/api";
 const ANDROID_EMULATOR_API_BASE = "http://10.0.2.2:8000/api";
 
 type Env = {
@@ -64,7 +64,7 @@ export async function apiFetch<T>(
   // Actually, appending guestId to query is safer and works for all methods if the backend checks req.query.guestId.
   const queryParams: Record<string, string | undefined> = { sheetId };
   if (guest_id && !token) {
-     queryParams.guestId = guest_id;
+    queryParams.guestId = guest_id;
   }
 
   const finalPath = withQuery(path, queryParams);

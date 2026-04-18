@@ -16,8 +16,9 @@ import { ChevronLeft, BarChart2, PieChart as PieIcon, ChevronDown } from "lucide
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { CATEGORIES, COLORS, INCOME_SOURCES } from "../constants/design";
-import { MonthPickerModal } from "../components/MonthPickerModal";
+import { AppDatePicker } from "../components/AppDatePicker";
 import { useCurrency } from "../context/CurrencyContext";
+import theme from "../theme/theme";
 import type { StoredUser } from "../navigation/types";
 
 const { width } = Dimensions.get("window");
@@ -32,13 +33,12 @@ export function ReportScreen({ navigation }: any) {
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const { expenses, incomes } = useAppSelector(selectActiveTransactions);
   const transactions = useMemo<Transaction[]>(() => [...expenses, ...incomes], [expenses, incomes]);
-  
+
   // Filtering & Toggles
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
   const [reportType, setReportType] = useState<"expense" | "income">("expense");
   const [chartType, setChartType] = useState<"donut" | "line">("donut");
 
@@ -55,8 +55,8 @@ export function ReportScreen({ navigation }: any) {
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
-        setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 500);
+      setRefreshing(true);
+      setTimeout(() => setRefreshing(false), 500);
     }
   }, []);
 
@@ -71,7 +71,7 @@ export function ReportScreen({ navigation }: any) {
     });
 
     const totals: Record<string, number> = {};
-    
+
     filtered.forEach(t => {
       const key = reportType === "expense" ? t.category : t.source;
       if (key) totals[key] = (totals[key] || 0) + Number(t.amount);
@@ -80,10 +80,10 @@ export function ReportScreen({ navigation }: any) {
     const totalAmount = Object.values(totals).reduce((sum, val) => sum + val, 0);
 
     return Object.entries(totals).map(([key, value]) => {
-      const meta = reportType === "expense" 
-        ? CATEGORIES.find(c => c.id === key) 
+      const meta = reportType === "expense"
+        ? CATEGORIES.find(c => c.id === key)
         : INCOME_SOURCES.find(s => s.id === key);
-      
+
       return {
         value,
         color: meta?.color || COLORS.primary,
@@ -110,9 +110,9 @@ export function ReportScreen({ navigation }: any) {
 
     transactions.forEach(t => {
       const d = new Date(t.date);
-      if (t.type === reportType && 
-          d.getMonth() === selectedDate.getMonth() && 
-          d.getFullYear() === selectedDate.getFullYear()) {
+      if (t.type === reportType &&
+        d.getMonth() === selectedDate.getMonth() &&
+        d.getFullYear() === selectedDate.getFullYear()) {
         const day = d.getDate();
         if (day <= 7) weeks[0].value += t.amount;
         else if (day <= 14) weeks[1].value += t.amount;
@@ -125,11 +125,11 @@ export function ReportScreen({ navigation }: any) {
   }, [transactions, reportType, selectedDate]);
 
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={COLORS.primary}/></View>;
+  if (loading) return <View style={styles.center}><ActivityIndicator color={COLORS.primary} /></View>;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} />}
       >
@@ -139,23 +139,24 @@ export function ReportScreen({ navigation }: any) {
             <ChevronLeft color={COLORS.text} size={28} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Report</Text>
-          <TouchableOpacity style={styles.monthPicker} onPress={() => setShowPicker(true)}>
-            <Text style={styles.monthText}>
-              {selectedDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-            </Text>
-            <ChevronDown color={COLORS.text2} size={16} />
-          </TouchableOpacity>
+          <View style={styles.monthPickerContainer}>
+            <AppDatePicker
+              value={selectedDate.toISOString()}
+              onChange={(iso) => setSelectedDate(new Date(iso))}
+              mode="month"
+            />
+          </View>
         </View>
 
         {/* Expenses/Income Toggle */}
         <View style={styles.typeToggle}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.typeBtn, reportType === "expense" && styles.typeBtnActive]}
             onPress={() => setReportType("expense")}
           >
             <Text style={[styles.typeBtnText, reportType === "expense" && styles.typeBtnTextActive]}>Expenses</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.typeBtn, reportType === "income" && styles.typeBtnActive]}
             onPress={() => setReportType("income")}
           >
@@ -219,14 +220,14 @@ export function ReportScreen({ navigation }: any) {
         <View style={styles.categoriesSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>All {reportType === "expense" ? "Expenses" : "Income"}</Text>
-            <Text style={styles.sectionTotal}>Total <Text style={{fontWeight: "800"}}>{formatAmount(totalAmount)}</Text></Text>
+            <Text style={styles.sectionTotal}>Total <Text style={{ fontWeight: "800" }}>{formatAmount(totalAmount)}</Text></Text>
           </View>
 
           {categoryData.map((item, index) => (
             <View key={item.id} style={styles.categoryCard}>
               <View style={styles.cardHeader}>
                 <View style={[styles.categoryIcon, { backgroundColor: item.color + "15" }]}>
-                  <Text style={{fontSize: 20}}>{item.icon}</Text>
+                  <Text style={{ fontSize: 20 }}>{item.icon}</Text>
                 </View>
                 <View style={styles.categoryInfo}>
                   <Text style={styles.categoryName}>{item.label}</Text>
@@ -234,7 +235,7 @@ export function ReportScreen({ navigation }: any) {
                 </View>
                 <View style={styles.categoryValueContainer}>
                   <Text style={styles.categoryAmount}>{formatAmount(item.value)}</Text>
-                  <Text style={[styles.trendText, {color: COLORS.green}]}>+12% <Text style={{color: COLORS.text3, fontWeight: "400"}}>vs last month</Text></Text>
+                  <Text style={[styles.trendText, { color: COLORS.green }]}>+12% <Text style={{ color: COLORS.text3, fontWeight: "400" }}>vs last month</Text></Text>
                 </View>
               </View>
               {/* Progress Bar */}
@@ -245,13 +246,6 @@ export function ReportScreen({ navigation }: any) {
           ))}
         </View>
       </ScrollView>
-
-      <MonthPickerModal 
-        visible={showPicker}
-        selectedDate={selectedDate}
-        onClose={() => setShowPicker(false)}
-        onSelect={(date) => setSelectedDate(date)}
-      />
     </SafeAreaView>
   );
 }
@@ -268,6 +262,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   headerTitle: { fontSize: 20, fontWeight: "700", color: COLORS.text },
+  monthPickerContainer: {
+    width: 150,
+    marginBottom: -theme.SPACING.lg,
+  },
   monthPicker: {
     flexDirection: "row",
     alignItems: "center",

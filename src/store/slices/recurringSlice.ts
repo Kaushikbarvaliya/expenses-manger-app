@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { apiFetch } from "../../api/client";
 import { RecurringTransaction } from "../../types";
 import { RootState } from "../index";
+import { getActiveSheetId } from "../../storage/auth";
 
 interface RecurringState {
   items: RecurringTransaction[];
@@ -22,10 +23,12 @@ export const fetchRecurring = createAsyncThunk<
 >("recurring/fetchRecurring", async (_, { getState }) => {
   const state = getState();
   const token = state.transactions.user?.token;
-  // apiFetch will automatically fetch guestId if token is missing
+  const sheetId = await getActiveSheetId();
+
   return apiFetch<RecurringTransaction[]>("/recurring", {
     method: "GET",
     token,
+    sheetId: sheetId || undefined,
   });
 });
 
@@ -36,9 +39,12 @@ export const addRecurring = createAsyncThunk<
 >("recurring/addRecurring", async (payload, { getState }) => {
   const state = getState();
   const token = state.transactions.user?.token;
+  const sheetId = await getActiveSheetId();
+
   return apiFetch<RecurringTransaction>("/recurring", {
     method: "POST",
     token,
+    sheetId: sheetId || undefined,
     body: JSON.stringify({
       title: payload.name, // The backend expects 'title', but the type has 'name'
       amount: payload.amount,
@@ -58,11 +64,14 @@ export const updateRecurring = createAsyncThunk<
 >("recurring/updateRecurring", async ({ id, data }, { getState }) => {
   const state = getState();
   const token = state.transactions.user?.token;
+  const sheetId = await getActiveSheetId();
+
   // Maps name to title for backend expectations
   const payload = { ...data, title: data.name };
   return apiFetch<RecurringTransaction>(`/recurring/${id}`, {
     method: "PUT",
     token,
+    sheetId: sheetId || undefined,
     body: JSON.stringify(payload),
   });
 });
@@ -74,9 +83,12 @@ export const deleteRecurring = createAsyncThunk<
 >("recurring/deleteRecurring", async (id, { getState }) => {
   const state = getState();
   const token = state.transactions.user?.token;
+  const sheetId = await getActiveSheetId();
+
   await apiFetch(`/recurring/${id}`, {
     method: "DELETE",
     token,
+    sheetId: sheetId || undefined,
   });
   return id;
 });
@@ -88,9 +100,12 @@ export const toggleRecurring = createAsyncThunk<
 >("recurring/toggleRecurring", async (id, { getState }) => {
   const state = getState();
   const token = state.transactions.user?.token;
+  const sheetId = await getActiveSheetId();
+
   return apiFetch<RecurringTransaction>(`/recurring/${id}/toggle`, {
     method: "PATCH",
     token,
+    sheetId: sheetId || undefined,
   });
 });
 

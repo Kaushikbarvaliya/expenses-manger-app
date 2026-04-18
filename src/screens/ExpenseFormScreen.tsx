@@ -20,6 +20,7 @@ import type { Expense } from "../types";
 import { CATEGORIES, COLORS, PAYMENT_METHODS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import { generateUUID } from "../utils/uuid";
+import { AppDatePicker } from "../components/AppDatePicker";
 
 export function ExpenseFormScreen({ navigation, route }: any) {
   const { currencySymbol } = useCurrency();
@@ -36,13 +37,13 @@ export function ExpenseFormScreen({ navigation, route }: any) {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("food");
   const [customCatName, setCustomCatName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(new Date().toISOString());
   const [method, setMethod] = useState("upi");
   const [note, setNote] = useState("");
   const [member, setMember] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [frequency, setFrequency] = useState("monthly");
-  
+
   const [familyMembers, setFamilyMembers] = useState<any[]>([{ _id: "self", name: "Me" }]);
 
   // Set default member immediately so form is valid for guests
@@ -56,33 +57,33 @@ export function ExpenseFormScreen({ navigation, route }: any) {
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        
+
         let apiMembers: any[] = [];
         if (u?.token) {
-           const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
-           apiMembers = Array.isArray(famRes) ? famRes : [];
+          const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
+          apiMembers = Array.isArray(famRes) ? famRes : [];
         }
-        
+
         const combinedMembers = [{ _id: "self", name: u?.name || "Me" }, ...apiMembers.filter(m => m._id !== u?._id)];
         setFamilyMembers(combinedMembers);
-        
+
         if (combinedMembers.length > 0 && !isEdit) {
-            setMember(combinedMembers[0]._id);
+          setMember(combinedMembers[0]._id);
         }
 
         if (isEdit && existingExpense) {
-            const exp = existingExpense;
-            setName(exp.name || "");
-            setAmount(String(exp.amount || ""));
-            setCategory(exp.category || "food");
-            if (exp.category === "other" && exp.name) setCustomCatName(exp.name);
-            setDate(exp.date ? new Date(exp.date).toISOString().split("T")[0] : "");
-            setMethod(exp.method || "upi");
-            
-            // Assume member assignment using familyMemberName in standard struct
-            setMember(exp.familyMemberName === (u?.name || "Me") ? "self" : exp.familyMemberName || "self");
-            
-            setRecurring(exp.recurring || false);
+          const exp = existingExpense;
+          setName(exp.name || "");
+          setAmount(String(exp.amount || ""));
+          setCategory(exp.category || "food");
+          if (exp.category === "other" && exp.name) setCustomCatName(exp.name);
+          setDate(exp.date ? new Date(exp.date).toISOString() : new Date().toISOString());
+          setMethod(exp.method || "upi");
+
+          // Assume member assignment using familyMemberName in standard struct
+          setMember(exp.familyMemberName === (u?.name || "Me") ? "self" : exp.familyMemberName || "self");
+
+          setRecurring(exp.recurring || false);
         }
       } catch (e: unknown) {
         // Silent catch for offline mode
@@ -95,7 +96,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
 
   const selectedCat = CATEGORIES.find((c) => c.id === category);
   const finalCat = category === "other" && customCatName.trim() ? customCatName.trim() : category;
-  
+
   // Parity isValid
   const numAmount = parseFloat(amount);
   const isValid = amount !== "" && !isNaN(numAmount) && numAmount > 0 && Boolean(member) && (category !== "other" || customCatName.trim().length > 0) && (!recurring || Boolean(frequency));
@@ -105,13 +106,13 @@ export function ExpenseFormScreen({ navigation, route }: any) {
     setSaving(true);
     try {
       const selectedMemberName = familyMembers.find(m => m._id === member)?.name || "Me";
-      
+
       const payload: Expense = {
         _id: isEdit && expenseId ? expenseId : generateUUID(),
         name: name.trim() || (category === "other" ? customCatName.trim() : selectedCat?.label) || "Expense",
         amount: numAmount,
         category: finalCat,
-        date,
+        date: date.split("T")[0],
         method,
         familyMemberName: selectedMemberName,
         recurring,
@@ -129,22 +130,22 @@ export function ExpenseFormScreen({ navigation, route }: any) {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
         if (u?.token) {
-           const body = {
-             name: payload.name, amount: payload.amount, category: payload.category, date: payload.date,
-             method: payload.method, memberId: member, note: note.trim() || undefined,
-             recurring, frequency: recurring ? frequency : undefined,
-           };
-           await apiFetch(isEdit ? `/expenses/${expenseId}` : `/expenses`, {
-             method: isEdit ? "PUT" : "POST",
-             token: u.token,
-             sheetId: sid || undefined,
-             body: JSON.stringify(body),
-           });
+          const body = {
+            name: payload.name, amount: payload.amount, category: payload.category, date: payload.date,
+            method: payload.method, memberId: member, note: note.trim() || undefined,
+            recurring, frequency: recurring ? frequency : undefined,
+          };
+          await apiFetch(isEdit ? `/expenses/${expenseId}` : `/expenses`, {
+            method: isEdit ? "PUT" : "POST",
+            token: u.token,
+            sheetId: sid || undefined,
+            body: JSON.stringify(body),
+          });
         }
       } catch (e) {
-         // Silently fail API, we rely on local Redux state for offline support
+        // Silently fail API, we rely on local Redux state for offline support
       }
-      
+
       navigation.goBack();
     } catch (e: unknown) {
       Alert.alert("Error", e instanceof Error ? e.message : "Failed to save");
@@ -244,12 +245,10 @@ export function ExpenseFormScreen({ navigation, route }: any) {
 
           <View style={styles.formRow}>
             <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Date</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
+              <AppDatePicker
+                label="Date"
                 value={date}
-                onChangeText={setDate}
+                onChange={setDate}
               />
             </View>
           </View>
@@ -257,18 +256,18 @@ export function ExpenseFormScreen({ navigation, route }: any) {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Member</Text>
             {familyMembers.length === 0 ? (
-                <Text style={{ fontSize: 13, color: COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
+              <Text style={{ fontSize: 13, color: COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
             ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                    {familyMembers.map((m) => {
-                        const isSel = member === m._id;
-                        return (
-                            <TouchableOpacity key={m._id} style={[styles.memberChip, isSel && styles.memberChipSelected]} onPress={() => setMember(m._id)}>
-                                <Text style={[styles.memberChipText, isSel && styles.memberChipTextSelected]}>{m.name}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </ScrollView>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {familyMembers.map((m) => {
+                  const isSel = member === m._id;
+                  return (
+                    <TouchableOpacity key={m._id} style={[styles.memberChip, isSel && styles.memberChipSelected]} onPress={() => setMember(m._id)}>
+                      <Text style={[styles.memberChipText, isSel && styles.memberChipTextSelected]}>{m.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             )}
           </View>
 
@@ -294,27 +293,27 @@ export function ExpenseFormScreen({ navigation, route }: any) {
           </View>
 
           <View style={[styles.formGroup, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
-              <TouchableOpacity 
-                style={[styles.checkbox, recurring && styles.checkboxChecked]} 
-                onPress={() => setRecurring(!recurring)}
-              >
-                  {recurring && <Text style={{ color: "white", fontSize: 12, fontWeight: "800" }}>✓</Text>}
-              </TouchableOpacity>
-              <Text style={[styles.label, { marginBottom: 0 }]}>Make recurring</Text>
+            <TouchableOpacity
+              style={[styles.checkbox, recurring && styles.checkboxChecked]}
+              onPress={() => setRecurring(!recurring)}
+            >
+              {recurring && <Text style={{ color: "white", fontSize: 12, fontWeight: "800" }}>✓</Text>}
+            </TouchableOpacity>
+            <Text style={[styles.label, { marginBottom: 0 }]}>Make recurring</Text>
           </View>
 
           {recurring && (
-              <View style={styles.recurringBox}>
-                  <Text style={styles.label}>Frequency</Text>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                      <TouchableOpacity style={[styles.freqBtn, frequency === "weekly" && styles.freqBtnSel]} onPress={() => setFrequency("weekly")}>
-                          <Text style={[styles.freqText, frequency === "weekly" && styles.freqTextSel]}>📆 Weekly</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.freqBtn, frequency === "monthly" && styles.freqBtnSel]} onPress={() => setFrequency("monthly")}>
-                          <Text style={[styles.freqText, frequency === "monthly" && styles.freqTextSel]}>📅 Monthly</Text>
-                      </TouchableOpacity>
-                  </View>
+            <View style={styles.recurringBox}>
+              <Text style={styles.label}>Frequency</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity style={[styles.freqBtn, frequency === "weekly" && styles.freqBtnSel]} onPress={() => setFrequency("weekly")}>
+                  <Text style={[styles.freqText, frequency === "weekly" && styles.freqTextSel]}>📆 Weekly</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.freqBtn, frequency === "monthly" && styles.freqBtnSel]} onPress={() => setFrequency("monthly")}>
+                  <Text style={[styles.freqText, frequency === "monthly" && styles.freqTextSel]}>📅 Monthly</Text>
+                </TouchableOpacity>
               </View>
+            </View>
           )}
 
           <View style={styles.formGroup}>
@@ -337,11 +336,11 @@ export function ExpenseFormScreen({ navigation, route }: any) {
             disabled={!isValid || saving}
           >
             {saving ? <ActivityIndicator color="#fff" /> : (
-                <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
-                    {isValid ? (
-                        `${selectedCat?.icon || "⚡"} ${recurring ? "Add Recurring" : "Add"} ${currencySymbol}${numAmount} · ${category === "other" ? (customCatName.trim() || "Custom") : selectedCat?.label} ${recurring ? `(${frequency})` : ""}`
-                    ) : "⚡ Add Expense"}
-                </Text>
+              <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
+                {isValid ? (
+                  `${selectedCat?.icon || "⚡"} ${recurring ? "Add Recurring" : "Add"} ${currencySymbol}${numAmount} · ${category === "other" ? (customCatName.trim() || "Custom") : selectedCat?.label} ${recurring ? `(${frequency})` : ""}`
+                ) : "⚡ Add Expense"}
+              </Text>
             )}
           </TouchableOpacity>
           <TouchableOpacity
@@ -373,8 +372,8 @@ const styles = StyleSheet.create({
   closeText: { fontSize: 16, color: COLORS.text2, fontWeight: "800" },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   amountContainer: {
-     backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border,
-     borderRadius: 16, padding: 16, marginBottom: 20
+    backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 16, padding: 16, marginBottom: 20
   },
   amountLabel: { fontSize: 11, fontWeight: "600", color: COLORS.text3, letterSpacing: 0.6, marginBottom: 8 },
   amountWrap: {

@@ -19,7 +19,7 @@ import { X, Calendar, Repeat, ArrowRight } from "lucide-react-native";
 import { RootStackParamList } from "../navigation/types";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { addRecurring, updateRecurring } from "../store/slices/recurringSlice";
-import { DatePickerField } from "../components/DatePickerField";
+import { AppDatePicker } from "../components/AppDatePicker";
 import { CATEGORIES, INCOME_SOURCES, COLORS as DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import theme from "../theme/theme";
@@ -240,17 +240,17 @@ export function AddEditRecurringScreen({ navigation, route }: Props) {
           {/* Date Range */}
           <View style={styles.dateRow}>
             <View style={{ flex: 1 }}>
-              <DatePickerField
+              <AppDatePicker
                 label="Start Date"
-                value={startDate}
-                onChange={setStartDate}
+                value={startDate.toISOString()}
+                onChange={(iso) => setStartDate(new Date(iso))}
               />
             </View>
             <View style={{ flex: 1 }}>
-              <DatePickerField
+              <AppDatePicker
                 label="End Date (Optional)"
-                value={endDate}
-                onChange={setEndDate}
+                value={endDate ? endDate.toISOString() : null}
+                onChange={(iso) => setEndDate(iso ? new Date(iso) : null)}
                 minDate={startDate}
                 placeholder="No end date"
               />

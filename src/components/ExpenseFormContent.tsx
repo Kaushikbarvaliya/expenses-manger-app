@@ -122,23 +122,30 @@ export function ExpenseFormContent({ navigation, mode = "add", id }: any) {
         dispatch(addTransaction(payload));
       }
 
-      // Try sending to server if online (optional, ignoring fail)
+      // Try sending to server if online (including guest mode)
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        if (u?.token) {
-           const body = {
-             name: payload.name, amount: payload.amount, category: payload.category, date: payload.date,
-             method: payload.method, memberId: member, note: note.trim() || undefined,
-             recurring, frequency: recurring ? frequency : undefined,
-           };
-           await apiFetch(isEdit ? `/expenses/${id}` : `/expenses`, {
-             method: isEdit ? "PUT" : "POST",
-             token: u.token,
-             sheetId: sid || undefined,
-             body: JSON.stringify(body),
-           });
-        }
+        
+        const body: any = {
+          name: payload.name, 
+          amount: payload.amount, 
+          category: payload.category, 
+          date: payload.date,
+          method: payload.method, 
+          memberId: member, 
+          note: note.trim() || undefined,
+          recurring, 
+          frequency: recurring ? frequency : undefined,
+        };
+
+        // If guest, apiFetch will automatically attach x-guest-id
+        await apiFetch(isEdit ? `/expenses/${id}` : `/expenses`, {
+          method: isEdit ? "PUT" : "POST",
+          token: u?.token, // Might be undefined for guest
+          sheetId: sid || undefined,
+          body: JSON.stringify(body),
+        });
       } catch (e) {
          // Silently fail API, we rely on local Redux state for offline support
       }
@@ -293,12 +300,18 @@ export function ExpenseFormContent({ navigation, mode = "add", id }: any) {
         {recurring && (
             <View style={styles.recurringBox}>
                 <Text style={styles.label}>Frequency</Text>
-                <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <TouchableOpacity style={[styles.freqBtn, frequency === "daily" && styles.freqBtnSel]} onPress={() => setFrequency("daily")}>
+                        <Text style={[styles.freqText, frequency === "daily" && styles.freqTextSel]}>Daily</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={[styles.freqBtn, frequency === "weekly" && styles.freqBtnSel]} onPress={() => setFrequency("weekly")}>
                         <Text style={[styles.freqText, frequency === "weekly" && styles.freqTextSel]}>Weekly</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.freqBtn, frequency === "monthly" && styles.freqBtnSel]} onPress={() => setFrequency("monthly")}>
                         <Text style={[styles.freqText, frequency === "monthly" && styles.freqTextSel]}>Monthly</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.freqBtn, frequency === "yearly" && styles.freqBtnSel]} onPress={() => setFrequency("yearly")}>
+                        <Text style={[styles.freqText, frequency === "yearly" && styles.freqTextSel]}>Yearly</Text>
                     </TouchableOpacity>
                 </View>
             </View>

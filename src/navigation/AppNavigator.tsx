@@ -14,6 +14,7 @@ import { IncomeFormScreen } from "../screens/IncomeFormScreen";
 import { AddTransactionScreen } from "../screens/AddTransactionScreen";
 import { RecurringListScreen } from "../screens/RecurringListScreen";
 import { AddEditRecurringScreen } from "../screens/AddEditRecurringScreen";
+import { ReportScreen } from "../screens/ReportScreen";
 import { AppTabs } from "./AppTabs";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -80,6 +81,7 @@ export function AppNavigator() {
         component={AddEditRecurringScreen} 
         options={{ headerShown: false, presentation: "modal" }} 
       />
+      <Stack.Screen name="Report" component={ReportScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

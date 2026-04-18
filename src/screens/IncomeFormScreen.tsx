@@ -20,6 +20,7 @@ import type { Income } from "../types";
 import { INCOME_SOURCES, COLORS, PAYMENT_METHODS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import { generateUUID } from "../utils/uuid";
+import { AppDatePicker } from "../components/AppDatePicker";
 
 export function IncomeFormScreen({ navigation, route }: any) {
   const { currencySymbol } = useCurrency();
@@ -36,7 +37,7 @@ export function IncomeFormScreen({ navigation, route }: any) {
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("salary");
   const [customSourceName, setCustomSourceName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(new Date().toISOString());
   const [method, setMethod] = useState("salary");
   const [note, setNote] = useState("");
   const [member, setMember] = useState("");
@@ -54,31 +55,31 @@ export function IncomeFormScreen({ navigation, route }: any) {
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        
+
         let apiMembers: any[] = [];
         if (u?.token) {
-           const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
-           apiMembers = Array.isArray(famRes) ? famRes : [];
+          const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
+          apiMembers = Array.isArray(famRes) ? famRes : [];
         }
-        
+
         const combinedMembers = [{ _id: "self", name: u?.name || "Me" }, ...apiMembers.filter(m => m._id !== u?._id)];
         setFamilyMembers(combinedMembers);
-        
+
         if (combinedMembers.length > 0 && !isEdit) {
-            setMember(combinedMembers[0]._id);
+          setMember(combinedMembers[0]._id);
         }
 
         if (isEdit && existingIncome) {
-            const inc = existingIncome;
-            setName(inc.name || "");
-            setAmount(String(inc.amount || ""));
-            setSource(inc.source || "salary");
-            if (inc.source === "other" && inc.name) setCustomSourceName(inc.name);
-            setDate(inc.date ? new Date(inc.date).toISOString().split("T")[0] : "");
-            setMethod(inc.method || "salary");
-            
-            // Assume member assignment using familyMemberName in standard struct
-            setMember(inc.familyMemberName === (u?.name || "Me") ? "self" : inc.familyMemberName || "self");
+          const inc = existingIncome;
+          setName(inc.name || "");
+          setAmount(String(inc.amount || ""));
+          setSource(inc.source || "salary");
+          if (inc.source === "other" && inc.name) setCustomSourceName(inc.name);
+          setDate(inc.date ? new Date(inc.date).toISOString() : new Date().toISOString());
+          setMethod(inc.method || "salary");
+
+          // Assume member assignment using familyMemberName in standard struct
+          setMember(inc.familyMemberName === (u?.name || "Me") ? "self" : inc.familyMemberName || "self");
         }
       } catch (e: unknown) {
         // silently catch offline
@@ -101,13 +102,13 @@ export function IncomeFormScreen({ navigation, route }: any) {
     setSaving(true);
     try {
       const selectedMemberName = familyMembers.find(m => m._id === member)?.name || "Me";
-      
+
       const payload: Income = {
         _id: isEdit && incomeId ? incomeId : generateUUID(),
         name: name.trim() || (source === "other" ? customSourceName.trim() : selectedSource?.label) || "Income",
         amount: numAmount,
         source: finalSource,
-        date,
+        date: date.split("T")[0],
         method,
         familyMemberName: selectedMemberName,
         type: 'income'
@@ -124,19 +125,19 @@ export function IncomeFormScreen({ navigation, route }: any) {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
         if (u?.token) {
-           const body = {
-             name: payload.name, amount: payload.amount, source: payload.source, date: payload.date,
-             method: payload.method, memberId: member, note: note.trim() || undefined,
-           };
-           await apiFetch(isEdit ? `/incomes/${incomeId}` : `/incomes`, {
-             method: isEdit ? "PUT" : "POST",
-             token: u.token,
-             sheetId: sid || undefined,
-             body: JSON.stringify(body),
-           });
+          const body = {
+            name: payload.name, amount: payload.amount, source: payload.source, date: payload.date,
+            method: payload.method, memberId: member, note: note.trim() || undefined,
+          };
+          await apiFetch(isEdit ? `/incomes/${incomeId}` : `/incomes`, {
+            method: isEdit ? "PUT" : "POST",
+            token: u.token,
+            sheetId: sid || undefined,
+            body: JSON.stringify(body),
+          });
         }
       } catch (e) {
-         // Silently fail API
+        // Silently fail API
       }
 
       navigation.goBack();
@@ -171,25 +172,25 @@ export function IncomeFormScreen({ navigation, route }: any) {
         <ScrollView contentContainerStyle={styles.scroll}>
           {/* Amount Box */}
           <View style={styles.amountContainer}>
-             <Text style={styles.amountLabel}>AMOUNT</Text>
-             <View style={styles.amountWrap}>
-               <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.green : COLORS.text3 }]}>{currencySymbol}</Text>
-               <TextInput
-                 style={[styles.amountInput, { color: isValid ? COLORS.text : COLORS.text3 }]}
-                 placeholder="0"
-                 keyboardType="numeric"
-                 value={amount}
-                 onChangeText={setAmount}
-                 placeholderTextColor={COLORS.text3}
-               />
-             </View>
-             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
-               {[1000, 2000, 5000, 10000, 20000, 50000].map(val => (
-                 <TouchableOpacity key={val} style={styles.quickAmtBtn} onPress={() => setAmount(String(val))}>
-                   <Text style={styles.quickAmtText}>{currencySymbol}{val}</Text>
-                 </TouchableOpacity>
-               ))}
-             </ScrollView>
+            <Text style={styles.amountLabel}>AMOUNT</Text>
+            <View style={styles.amountWrap}>
+              <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.green : COLORS.text3 }]}>{currencySymbol}</Text>
+              <TextInput
+                style={[styles.amountInput, { color: isValid ? COLORS.text : COLORS.text3 }]}
+                placeholder="0"
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+                placeholderTextColor={COLORS.text3}
+              />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
+              {[1000, 2000, 5000, 10000, 20000, 50000].map(val => (
+                <TouchableOpacity key={val} style={styles.quickAmtBtn} onPress={() => setAmount(String(val))}>
+                  <Text style={styles.quickAmtText}>{currencySymbol}{val}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Form Fields */}
@@ -238,12 +239,10 @@ export function IncomeFormScreen({ navigation, route }: any) {
 
           <View style={styles.formRow}>
             <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Date</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
+              <AppDatePicker
+                label="Date"
                 value={date}
-                onChangeText={setDate}
+                onChange={setDate}
               />
             </View>
           </View>
@@ -251,18 +250,18 @@ export function IncomeFormScreen({ navigation, route }: any) {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Member</Text>
             {familyMembers.length === 0 ? (
-                <Text style={{ fontSize: 13, color: COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
+              <Text style={{ fontSize: 13, color: COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
             ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                    {familyMembers.map((m) => {
-                        const isSel = member === m._id;
-                        return (
-                            <TouchableOpacity key={m._id} style={[styles.memberChip, isSel && styles.memberChipSelected]} onPress={() => setMember(m._id)}>
-                                <Text style={[styles.memberChipText, isSel && styles.memberChipTextSelected]}>{m.name}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </ScrollView>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {familyMembers.map((m) => {
+                  const isSel = member === m._id;
+                  return (
+                    <TouchableOpacity key={m._id} style={[styles.memberChip, isSel && styles.memberChipSelected]} onPress={() => setMember(m._id)}>
+                      <Text style={[styles.memberChipText, isSel && styles.memberChipTextSelected]}>{m.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             )}
           </View>
 
@@ -307,11 +306,11 @@ export function IncomeFormScreen({ navigation, route }: any) {
             disabled={!isValid || saving}
           >
             {saving ? <ActivityIndicator color="#fff" /> : (
-                <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
-                    {isValid ? (
-                        `${selectedSource?.icon || "💵"} Add +${currencySymbol}${numAmount} · ${source === "other" ? (customSourceName.trim() || "Custom Source") : selectedSource?.label}`
-                    ) : "✨ Add Income"}
-                </Text>
+              <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
+                {isValid ? (
+                  `${selectedSource?.icon || "💵"} Add +${currencySymbol}${numAmount} · ${source === "other" ? (customSourceName.trim() || "Custom Source") : selectedSource?.label}`
+                ) : "✨ Add Income"}
+              </Text>
             )}
           </TouchableOpacity>
           <TouchableOpacity
@@ -343,8 +342,8 @@ const styles = StyleSheet.create({
   closeText: { fontSize: 16, color: COLORS.text2, fontWeight: "800" },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   amountContainer: {
-     backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border,
-     borderRadius: 16, padding: 16, marginBottom: 20
+    backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: 16, padding: 16, marginBottom: 20
   },
   amountLabel: { fontSize: 11, fontWeight: "600", color: COLORS.text3, letterSpacing: 0.6, marginBottom: 8 },
   amountWrap: {
