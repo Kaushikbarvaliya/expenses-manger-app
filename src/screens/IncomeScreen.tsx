@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
-import { INCOME_SOURCES, COLORS } from "../constants/design";
+import { INCOME_SOURCES, DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -39,10 +39,10 @@ export function IncomeScreen({ navigation }: any) {
   }, []);
 
   const load = useCallback(async (isRefresh = false) => {
-     if (isRefresh) {
-        setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 500); // Dummy refresh for feedback
-     }
+    if (isRefresh) {
+      setRefreshing(true);
+      setTimeout(() => setRefreshing(false), 500); // Dummy refresh for feedback
+    }
   }, []);
 
   const total = useMemo(() => incomes.reduce((sum, x) => sum + (Number(x.amount) || 0), 0), [incomes]);
@@ -55,7 +55,7 @@ export function IncomeScreen({ navigation }: any) {
         style: "destructive",
         onPress: async () => {
           dispatch(deleteTransaction({ id, type: 'income' }));
-          
+
           if (user?.token) {
             try {
               await apiFetch<{ message: string }>(`/incomes/${id}`, { method: "DELETE", token: user.token, sheetId: sheetId || undefined });
@@ -127,7 +127,7 @@ export function IncomeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1, backgroundColor: DESIGN_COLORS.bg },
   header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
   title: { fontSize: 28, fontWeight: "900", color: "#111827" },
   subtitle: { fontSize: 13, fontWeight: "800", color: "#4b5563", marginTop: 4 },
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   iconText: { fontSize: 20 },
   cardTitle: { fontSize: 15, fontWeight: "900", color: "#111827" },
   cardMeta: { fontSize: 12, fontWeight: "700", color: "#6b7280", marginTop: 4 },
-  amount: { fontSize: 14, fontWeight: "900", color: COLORS.green },
+  amount: { fontSize: 14, fontWeight: "900", color: DESIGN_COLORS.green },
   cardActions: { flexDirection: "row", gap: 10, justifyContent: "flex-end" },
   smallButton: {
     borderRadius: 12,

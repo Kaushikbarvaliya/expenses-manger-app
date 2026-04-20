@@ -20,10 +20,15 @@ interface AppDatePickerProps {
   label?: string;
   value: string | Date | null;
   onChange: (isoString: string) => void;
+  onDismiss?: () => void;
   placeholder?: string;
   minDate?: Date;
   mode?: "date" | "month" | "year";
   allowModeSwitch?: boolean;
+  /** Optional external validation error message */
+  error?: string;
+  /** If true, open the picker modal immediately on mount */
+  autoOpen?: boolean;
 }
 
 const MONTHS = [
@@ -31,17 +36,35 @@ const MONTHS = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
+/** Format a Date as DD MMM YYYY, e.g. "18 Apr 2026" */
+const formatToDDMMMYYYY = (d: Date): string => {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = d.toLocaleDateString("en-US", { month: "short" });
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
 export function AppDatePicker({
   label,
   value,
   onChange,
+  onDismiss,
   placeholder = "Select Date",
   minDate,
   mode: initialMode = "date",
   allowModeSwitch = true,
+  error,
+  autoOpen = false,
 }: AppDatePickerProps) {
   const [showModal, setShowModal] = useState(false);
   const [currentMode, setCurrentMode] = useState<"date" | "month" | "year">(initialMode);
+
+  const closeModal = () => { setShowModal(false); onDismiss?.(); };
+
+  // Auto-open on mount if requested
+  useEffect(() => {
+    if (autoOpen) setShowModal(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Convert value to Date object for internal use
   const dateValue = value ? new Date(value) : new Date();
@@ -62,23 +85,20 @@ export function AppDatePicker({
     if (initialMode === "month") {
       return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
     }
-    return d.toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    // date mode: always DD MMM YYYY
+    return formatToDDMMMYYYY(d);
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
       if (Platform.OS === "android") {
         onChange(selectedDate.toISOString());
-        setShowModal(false);
+        closeModal();
       } else {
         setTempDate(selectedDate);
       }
     } else if (Platform.OS === "android") {
-      setShowModal(false);
+      closeModal();
     }
   };
 
@@ -86,7 +106,7 @@ export function AppDatePicker({
     const newDate = new Date(tempDate);
     newDate.setMonth(monthIndex);
     onChange(newDate.toISOString());
-    setShowModal(false);
+    closeModal();
   };
 
   const handleYearSelect = (year: number) => {
@@ -94,9 +114,8 @@ export function AppDatePicker({
     newDate.setFullYear(year);
     if (initialMode === "year") {
       onChange(newDate.toISOString());
-      setShowModal(false);
+      closeModal();
     } else {
-      // If we are in month mode and just picked a year, stay in month mode
       setTempDate(newDate);
       setCurrentMode("month");
     }
@@ -110,7 +129,7 @@ export function AppDatePicker({
 
   const confirmIOSSelection = () => {
     onChange(tempDate.toISOString());
-    setShowModal(false);
+    closeModal();
   };
 
   const renderMonthGrid = () => (
@@ -173,30 +192,35 @@ export function AppDatePicker({
       {label && <Text style={styles.label}>{label}</Text>}
       <TouchableOpacity
         activeOpacity={0.7}
-        style={[styles.inputBox, !value && styles.placeholderBox]}
+        style={[
+          styles.inputBox,
+          !value && styles.placeholderBox,
+          !!error && styles.inputBoxError,
+        ]}
         onPress={() => setShowModal(true)}
       >
         <Text style={value ? styles.valueText : styles.placeholderText}>
           {formatDateLabel()}
         </Text>
-        <Calendar size={20} color={theme.COLORS.text3} strokeWidth={2} />
+        <Calendar size={20} color={error ? theme.COLORS.error : theme.COLORS.text3} strokeWidth={2} />
       </TouchableOpacity>
+      {!!error && <Text style={styles.errorText}>{error}</Text>}
 
       <Modal
         visible={showModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={closeModal}
       >
         <TouchableOpacity
           activeOpacity={1}
           style={styles.modalOverlay}
-          onPress={() => setShowModal(false)}
+          onPress={closeModal}
         >
           <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select {currentMode.charAt(0).toUpperCase() + currentMode.slice(1)}</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
+              <TouchableOpacity onPress={closeModal}>
                 <X size={24} color={theme.COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -225,6 +249,7 @@ export function AppDatePicker({
                     onChange={handleDateChange}
                     minimumDate={minDate}
                     accentColor={theme.COLORS.primary}
+                    themeVariant="light"
                   />
                   {Platform.OS === "ios" && (
                     <TouchableOpacity style={styles.doneButton} onPress={confirmIOSSelection}>
@@ -267,6 +292,16 @@ const styles = StyleSheet.create({
   },
   placeholderBox: {
     borderColor: theme.COLORS.borderLight,
+  },
+  inputBoxError: {
+    borderColor: theme.COLORS.error,
+    borderWidth: 1.5,
+  },
+  errorText: {
+    fontSize: 12,
+    color: theme.COLORS.error,
+    marginTop: 4,
+    fontWeight: "500",
   },
   valueText: {
     ...theme.TYPOGRAPHY.bodyLarge,

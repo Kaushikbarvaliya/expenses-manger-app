@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
-import { COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { ExpenseFormContent } from "../components/ExpenseFormContent";
 import { IncomeFormContent } from "../components/IncomeFormContent";
 
@@ -24,11 +24,11 @@ export function AddTransactionScreen({ navigation, route }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.closeButton}>
-          <X size={24} color={COLORS.text} strokeWidth={2} />
+          <X size={24} color={DESIGN_COLORS.text} strokeWidth={2} />
         </TouchableOpacity>
         <Text style={styles.title}>{isEdit ? "Edit Transaction" : "Add Transaction"}</Text>
         <View style={styles.placeholder} />
@@ -63,12 +63,12 @@ export function AddTransactionScreen({ navigation, route }: any) {
         )}
 
         <View style={styles.recurringLinkContainer}>
-           <TouchableOpacity 
-             style={styles.recurringLink}
-             onPress={() => navigation.navigate("AddEditRecurring", { mode: "add" })}
-           >
-             <Text style={styles.recurringLinkText}>Create a Recurring Transaction instead</Text>
-           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.recurringLink}
+            onPress={() => navigation.navigate("AddEditRecurring", { mode: "add" })}
+          >
+            <Text style={styles.recurringLinkText}>Create a Recurring Transaction instead</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -87,27 +87,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: DESIGN_COLORS.border,
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: DESIGN_COLORS.surface2,
     justifyContent: "center",
     alignItems: "center",
   },
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: COLORS.text,
+    color: DESIGN_COLORS.text,
   },
   placeholder: {
     width: 40,
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: COLORS.surface2,
+    backgroundColor: DESIGN_COLORS.surface2,
     marginHorizontal: 20,
     marginTop: 20,
     borderRadius: 12,
@@ -130,10 +130,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: "600",
-    color: COLORS.text3,
+    color: DESIGN_COLORS.text3,
   },
   activeTabText: {
-    color: COLORS.text,
+    color: DESIGN_COLORS.text,
   },
   content: {
     flex: 1,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   recurringLinkText: {
-    color: COLORS.primary,
+    color: DESIGN_COLORS.primary,
     fontSize: 14,
     fontWeight: "700",
     textDecorationLine: "underline",

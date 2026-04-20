@@ -14,11 +14,19 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { X, Calendar, Target, ChevronRight, Info } from "lucide-react-native";
+import { X, Target, Info } from "lucide-react-native";
+import { AppDatePicker } from "../components/AppDatePicker";
 import { getStoredUser, getActiveSheetId } from "../storage/auth";
 import { apiFetch } from "../api/client";
-import { CATEGORIES, COLORS as DESIGN_COLORS } from "../constants/design";
+import { CATEGORIES, DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
+// BudgetFormScreen only uses 'month' and 'year' — 'day' is not a valid budget period
+type BudgetPeriodType = 'month' | 'year';
+
+// Maps frontend FilterType ('month'/'year') to backend periodType ('monthly'/'yearly')
+function toBackendPeriodType(pt: BudgetPeriodType): 'monthly' | 'yearly' {
+  return pt === 'year' ? 'yearly' : 'monthly';
+}
 
 const { width } = Dimensions.get("window");
 
@@ -33,9 +41,9 @@ export function BudgetFormScreen({ navigation, route }: any) {
   const [loading, setLoading] = useState(isEdit);
 
   const now = new Date();
-  const [periodType, setPeriodType] = useState<"monthly" | "yearly">("monthly");
-  const [month, setMonth] = useState<number>(now.getMonth() + 1);
-  const [year, setYear] = useState<number>(now.getFullYear());
+  const [periodType, setPeriodType] = useState<BudgetPeriodType>("month");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [totalBudget, setTotalBudget] = useState<string>("");
   const [categoryAmounts, setCategoryAmounts] = useState<Record<string, string>>({});
 
@@ -52,9 +60,15 @@ export function BudgetFormScreen({ navigation, route }: any) {
         const bud = data.find((x) => x._id === budgetId);
         
         if (bud) {
-          setPeriodType(bud.periodType || "monthly");
-          setMonth(bud.month || now.getMonth() + 1);
-          setYear(bud.year || now.getFullYear());
+          const type = bud.periodType === 'yearly' ? 'year' : 'month';
+          setPeriodType(type as BudgetPeriodType);
+          
+          if (type === 'month') {
+            setSelectedDate(new Date(bud.year || now.getFullYear(), (bud.month || 1) - 1, 1));
+          } else {
+            setSelectedDate(new Date(bud.year || now.getFullYear(), 0, 1));
+          }
+          
           setTotalBudget(String(bud.totalBudget || ""));
           
           const map: Record<string, string> = {};
@@ -81,28 +95,42 @@ export function BudgetFormScreen({ navigation, route }: any) {
   const totalAllocated = Object.values(categoryAmounts).reduce((sum, v) => sum + (Number(v) || 0), 0);
   const totalNum = Number(totalBudget);
   const overAllocated = totalAllocated > totalNum;
-  const isValid = totalNum > 0 && year >= 1970;
+  const year = selectedDate.getFullYear();
+  // 'day' is not a valid budget period — budgets are monthly or yearly only
+  const isValid = totalNum > 0 && year >= 1970 && (periodType === 'month' || periodType === 'year');
 
   const handleSubmit = async () => {
-    if (!isValid || saving) return;
+    if (saving) return;
+
+    // Frontend validation before hitting API
+    if (periodType !== 'month' && periodType !== 'year') {
+      Alert.alert("Invalid Period", "periodType must be either 'monthly' or 'yearly'.");
+      return;
+    }
+    if (!isValid) return;
+
     setSaving(true);
-    
     try {
       const u = await getStoredUser();
       const sid = await getActiveSheetId();
       if (!u?.token) throw new Error("Not logged in");
 
+      // Map frontend type to backend-accepted values
+      const backendPeriodType = toBackendPeriodType(periodType);
+
+      // Only send fields the backend accepts — no 'amount', 'periodValue', 'day' related fields
       const payload = {
-        periodType,
-        month: periodType === "yearly" ? 1 : month,
-        year,
-        totalBudget: totalNum,
+        periodType: backendPeriodType,          // 'monthly' | 'yearly' only
+        month: selectedDate.getMonth() + 1,     // 1-12 (required for monthly)
+        year: selectedDate.getFullYear(),        // e.g. 2026
+        totalBudget: totalNum,                  // the actual budget limit
         categories: CATEGORIES.map((cat) => ({
           category: cat.id,
           amount: Number(categoryAmounts[cat.id] || 0)
-        }))
+        })).filter(c => c.amount > 0),           // only send categories with amounts set
       };
 
+      // Backend uses upsert (POST /budgets) for both create and edit — no PUT endpoint
       await apiFetch("/budgets", {
         method: "POST",
         token: u.token,
@@ -117,7 +145,6 @@ export function BudgetFormScreen({ navigation, route }: any) {
   };
 
   const currentYear = now.getFullYear();
-  const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - 2 + i);
 
   if (loading) {
     return (
@@ -178,66 +205,66 @@ export function BudgetFormScreen({ navigation, route }: any) {
             </ScrollView>
           </View>
 
-          {/* Period Selector */}
+          {/* Budget Period Selector — 'day' is excluded, only Monthly / Yearly */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Budget Period</Text>
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tab, periodType === "monthly" && styles.activeTab]}
-                onPress={() => setPeriodType("monthly")}
-              >
-                <Text style={[styles.tabText, periodType === "monthly" && styles.activeTabText]}>Monthly</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, periodType === "yearly" && styles.activeTab]}
-                onPress={() => setPeriodType("yearly")}
-              >
-                <Text style={[styles.tabText, periodType === "yearly" && styles.activeTabText]}>Yearly</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            <View style={styles.filterContainer}>
+              {/* Custom 2-tab toggle: Month | Year only (no Day for budgets) */}
+              <View style={styles.periodToggleRow}>
+                {(['month', 'year'] as const).map((pt) => (
+                  <TouchableOpacity
+                    key={pt}
+                    style={[
+                      styles.periodTab,
+                      periodType === pt && styles.periodTabActive,
+                    ]}
+                    onPress={() => {
+                      setPeriodType(pt);
+                      setShowDatePicker(true);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      styles.periodTabText,
+                      periodType === pt && styles.periodTabTextActive,
+                    ]}>
+                      {pt === 'month' ? 'Monthly' : 'Yearly'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-          {/* Date Range Selector */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Select {periodType === "monthly" ? "Month & Year" : "Year"}</Text>
-            
-            <View style={styles.dateSelectorRow}>
-              {periodType === "monthly" && (
-                <View style={styles.dateColumn}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
-                    {MONTH_FULL.map((mName, i) => {
-                      const mNum = i + 1;
-                      const active = month === mNum;
-                      return (
-                        <TouchableOpacity 
-                          key={mNum} 
-                          style={[styles.dateChip, active && styles.dateChipActive]} 
-                          onPress={() => setMonth(mNum)}
-                        >
-                          <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>{mName.substring(0,3)}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
+              {/* Tappable date label — opens the picker */}
+              <TouchableOpacity
+                style={styles.dateLabelRow}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.dateLabelText}>
+                  {periodType === 'month'
+                    ? selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                    : String(selectedDate.getFullYear())}
+                </Text>
+                <Text style={[styles.dateLabelText, { fontSize: 12, opacity: 0.7, marginTop: 2 }]}>▾ tap to change</Text>
+              </TouchableOpacity>
+
+              {/* Conditionally rendered AppDatePicker with autoOpen */}
+              {showDatePicker && (
+                <View style={{ height: 0, overflow: 'hidden' }}>
+                  <AppDatePicker
+                    key={`budget-period-${periodType}-${showDatePicker}`}
+                    value={selectedDate.toISOString()}
+                    onChange={(iso) => {
+                      setSelectedDate(new Date(iso));
+                      setShowDatePicker(false);
+                    }}
+                    onDismiss={() => setShowDatePicker(false)}
+                    mode={periodType === 'month' ? 'month' : 'year'}
+                    allowModeSwitch={false}
+                    autoOpen
+                  />
                 </View>
               )}
-              
-              <View style={[styles.dateColumn, periodType === "yearly" && { flex: 1 }]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
-                  {yearOptions.map(y => {
-                    const active = year === y;
-                    return (
-                      <TouchableOpacity 
-                        key={y} 
-                        style={[styles.dateChip, active && styles.dateChipActive]} 
-                        onPress={() => setYear(y)}
-                      >
-                        <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>{y}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
             </View>
           </View>
 
@@ -402,33 +429,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     marginBottom: 12,
   },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: DESIGN_COLORS.surface2,
-    borderRadius: 14,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  activeTab: {
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: DESIGN_COLORS.text3,
-  },
-  activeTabText: {
-    color: DESIGN_COLORS.text,
+  filterContainer: {
+    backgroundColor: DESIGN_COLORS.primary,
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: DESIGN_COLORS.primary,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
   },
   dateSelectorRow: {
     gap: 12,
@@ -572,5 +580,45 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.surface3,
     shadowOpacity: 0,
     elevation: 0,
+  },
+  // Period toggle styles (Monthly / Yearly — no Day for budgets)
+  periodToggleRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 12,
+  },
+  periodTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  periodTabActive: {
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  periodTabText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.75)",
+  },
+  periodTabTextActive: {
+    color: DESIGN_COLORS.primary,
+  },
+  dateLabelRow: {
+    alignItems: "center",
+    paddingVertical: 6,
+    marginBottom: 4,
+  },
+  dateLabelText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

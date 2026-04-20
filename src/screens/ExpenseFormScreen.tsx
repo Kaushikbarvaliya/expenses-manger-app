@@ -17,7 +17,7 @@ import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { addTransaction, updateTransaction, selectActiveTransactions } from "../store/slices/transactionSlice";
 import type { Expense } from "../types";
-import { CATEGORIES, COLORS, PAYMENT_METHODS } from "../constants/design";
+import { CATEGORIES, DESIGN_COLORS, PAYMENT_METHODS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import { generateUUID } from "../utils/uuid";
 import { AppDatePicker } from "../components/AppDatePicker";
@@ -37,7 +37,8 @@ export function ExpenseFormScreen({ navigation, route }: any) {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("food");
   const [customCatName, setCustomCatName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString());
+  const [date, setDate] = useState<string | null>(new Date().toISOString());
+  const [dateError, setDateError] = useState("");
   const [method, setMethod] = useState("upi");
   const [note, setNote] = useState("");
   const [member, setMember] = useState("");
@@ -99,9 +100,18 @@ export function ExpenseFormScreen({ navigation, route }: any) {
 
   // Parity isValid
   const numAmount = parseFloat(amount);
-  const isValid = amount !== "" && !isNaN(numAmount) && numAmount > 0 && Boolean(member) && (category !== "other" || customCatName.trim().length > 0) && (!recurring || Boolean(frequency));
+  const isValid = amount !== "" && !isNaN(numAmount) && numAmount > 0 && Boolean(date) && Boolean(member) && (category !== "other" || customCatName.trim().length > 0) && (!recurring || Boolean(frequency));
+
+  const handleDateChange = (iso: string) => {
+    setDate(iso);
+    if (iso) setDateError("");
+  };
 
   const handleSave = async () => {
+    if (!date) {
+      setDateError("Please select a date.");
+      return;
+    }
     if (!isValid || saving) return;
     setSaving(true);
     try {
@@ -112,7 +122,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
         name: name.trim() || (category === "other" ? customCatName.trim() : selectedCat?.label) || "Expense",
         amount: numAmount,
         category: finalCat,
-        date: date.split("T")[0],
+        date: (date ?? new Date().toISOString()).split("T")[0],
         method,
         familyMemberName: selectedMemberName,
         recurring,
@@ -157,7 +167,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
   if (loading) {
     return (
       <View style={[styles.safe, styles.center]}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
+        <ActivityIndicator size="large" color={DESIGN_COLORS.accent} />
       </View>
     );
   }
@@ -180,14 +190,14 @@ export function ExpenseFormScreen({ navigation, route }: any) {
           <View style={styles.amountContainer}>
             <Text style={styles.amountLabel}>AMOUNT</Text>
             <View style={styles.amountWrap}>
-              <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.accent2 : COLORS.text3 }]}>{currencySymbol}</Text>
+              <Text style={[styles.currencyPrefix, { color: isValid ? DESIGN_COLORS.accent2 : DESIGN_COLORS.text3 }]}>{currencySymbol}</Text>
               <TextInput
-                style={[styles.amountInput, { color: isValid ? COLORS.text : COLORS.text3 }]}
+                style={[styles.amountInput, { color: isValid ? DESIGN_COLORS.text : DESIGN_COLORS.text3 }]}
                 placeholder="0"
                 keyboardType="numeric"
                 value={amount}
                 onChangeText={setAmount}
-                placeholderTextColor={COLORS.text3}
+                placeholderTextColor={DESIGN_COLORS.text3}
               />
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
@@ -248,7 +258,9 @@ export function ExpenseFormScreen({ navigation, route }: any) {
               <AppDatePicker
                 label="Date"
                 value={date}
-                onChange={setDate}
+                onChange={handleDateChange}
+                allowModeSwitch={false}
+                error={dateError}
               />
             </View>
           </View>
@@ -256,7 +268,7 @@ export function ExpenseFormScreen({ navigation, route }: any) {
           <View style={styles.formGroup}>
             <Text style={styles.label}>Member</Text>
             {familyMembers.length === 0 ? (
-              <Text style={{ fontSize: 13, color: COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
+              <Text style={{ fontSize: 13, color: DESIGN_COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {familyMembers.map((m) => {
@@ -331,12 +343,12 @@ export function ExpenseFormScreen({ navigation, route }: any) {
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.submitBtn, !isValid && { opacity: 0.5, backgroundColor: COLORS.surface3, shadowOpacity: 0 }]}
+            style={[styles.submitBtn, !isValid && { opacity: 0.5, backgroundColor: DESIGN_COLORS.surface3, shadowOpacity: 0 }]}
             onPress={() => void handleSave()}
             disabled={!isValid || saving}
           >
             {saving ? <ActivityIndicator color="#fff" /> : (
-              <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
+              <Text style={[styles.submitText, !isValid && { color: DESIGN_COLORS.text2 }]}>
                 {isValid ? (
                   `${selectedCat?.icon || "⚡"} ${recurring ? "Add Recurring" : "Add"} ${currencySymbol}${numAmount} · ${category === "other" ? (customCatName.trim() || "Custom") : selectedCat?.label} ${recurring ? `(${frequency})` : ""}`
                 ) : "⚡ Add Expense"}
@@ -356,86 +368,86 @@ export function ExpenseFormScreen({ navigation, route }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.surface },
+  safe: { flex: 1, backgroundColor: DESIGN_COLORS.surface },
   flex: { flex: 1 },
   center: { justifyContent: "center", alignItems: "center" },
   header: {
     paddingTop: 24, paddingHorizontal: 24, paddingBottom: 16,
     flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start"
   },
-  title: { fontSize: 24, fontWeight: "800", color: COLORS.text },
-  subtitle: { fontSize: 13, color: COLORS.text3, marginTop: 4, fontWeight: "500" },
+  title: { fontSize: 24, fontWeight: "800", color: DESIGN_COLORS.text },
+  subtitle: { fontSize: 13, color: DESIGN_COLORS.text3, marginTop: 4, fontWeight: "500" },
   closeBtn: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surface2,
+    width: 36, height: 36, borderRadius: 18, backgroundColor: DESIGN_COLORS.surface2,
     alignItems: "center", justifyContent: "center"
   },
-  closeText: { fontSize: 16, color: COLORS.text2, fontWeight: "800" },
+  closeText: { fontSize: 16, color: DESIGN_COLORS.text2, fontWeight: "800" },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   amountContainer: {
-    backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: DESIGN_COLORS.surface2, borderWidth: 1, borderColor: DESIGN_COLORS.border,
     borderRadius: 16, padding: 16, marginBottom: 20
   },
-  amountLabel: { fontSize: 11, fontWeight: "600", color: COLORS.text3, letterSpacing: 0.6, marginBottom: 8 },
+  amountLabel: { fontSize: 11, fontWeight: "600", color: DESIGN_COLORS.text3, letterSpacing: 0.6, marginBottom: 8 },
   amountWrap: {
     flexDirection: "row", alignItems: "center",
   },
-  currencyPrefix: { fontSize: 24, fontWeight: "800", color: COLORS.text2 },
+  currencyPrefix: { fontSize: 24, fontWeight: "800", color: DESIGN_COLORS.text2 },
   amountInput: {
-    flex: 1, fontSize: 36, fontWeight: "800", color: COLORS.text, paddingVertical: 8, marginLeft: 6
+    flex: 1, fontSize: 36, fontWeight: "800", color: DESIGN_COLORS.text, paddingVertical: 8, marginLeft: 6
   },
   quickAmounts: { marginTop: 10, gap: 6 },
-  quickAmtBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
-  quickAmtText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
+  quickAmtBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: DESIGN_COLORS.surface, borderWidth: 1, borderColor: DESIGN_COLORS.border },
+  quickAmtText: { fontSize: 13, fontWeight: "700", color: DESIGN_COLORS.text2 },
   formGroup: { marginBottom: 20 },
   formRow: { flexDirection: "row", gap: 12 },
   label: {
-    fontSize: 12, fontWeight: "700", color: COLORS.text2,
+    fontSize: 12, fontWeight: "700", color: DESIGN_COLORS.text2,
     textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8
   },
   input: {
-    backgroundColor: COLORS.surface2, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border,
-    padding: 14, fontSize: 15, color: COLORS.text, fontWeight: "600"
+    backgroundColor: DESIGN_COLORS.surface2, borderRadius: 14, borderWidth: 1, borderColor: DESIGN_COLORS.border,
+    padding: 14, fontSize: 15, color: DESIGN_COLORS.text, fontWeight: "600"
   },
   grid4: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
   pill: {
     width: "22%", alignItems: "center", paddingVertical: 12, marginHorizontal: "1.5%", marginBottom: 8,
-    borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface
+    borderRadius: 14, borderWidth: 1, borderColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.surface
   },
   pillIcon: { fontSize: 22, marginBottom: 4 },
-  pillLabel: { fontSize: 11, fontWeight: "700", color: COLORS.text2 },
+  pillLabel: { fontSize: 11, fontWeight: "700", color: DESIGN_COLORS.text2 },
   grid3: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
   payPill: {
     width: "30%", flexDirection: "row", alignItems: "center", justifyContent: "center",
     paddingVertical: 12, marginHorizontal: "1.5%", marginBottom: 8, borderRadius: 14,
-    borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface
+    borderWidth: 1, borderColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.surface
   },
-  payPillSelected: { borderColor: COLORS.accent, backgroundColor: COLORS.accentGlow },
+  payPillSelected: { borderColor: DESIGN_COLORS.accent, backgroundColor: DESIGN_COLORS.accentGlow },
   payIcon: { fontSize: 16, marginRight: 6 },
-  payLabel: { fontSize: 12, fontWeight: "700", color: COLORS.text2 },
-  payLabelSelected: { color: COLORS.accent2 },
-  memberChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border },
-  memberChipSelected: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  memberChipText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
+  payLabel: { fontSize: 12, fontWeight: "700", color: DESIGN_COLORS.text2 },
+  payLabelSelected: { color: DESIGN_COLORS.accent2 },
+  memberChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: DESIGN_COLORS.surface2, borderWidth: 1, borderColor: DESIGN_COLORS.border },
+  memberChipSelected: { backgroundColor: DESIGN_COLORS.accent, borderColor: DESIGN_COLORS.accent },
+  memberChipText: { fontSize: 13, fontWeight: "700", color: DESIGN_COLORS.text2 },
   memberChipTextSelected: { color: "#fff" },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.border2, backgroundColor: COLORS.surface, justifyContent: "center", alignItems: "center" },
-  checkboxChecked: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  recurringBox: { padding: 12, backgroundColor: COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginBottom: 20 },
-  freqBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: "center" },
-  freqBtnSel: { borderColor: COLORS.accent, backgroundColor: COLORS.accentGlow },
-  freqText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
-  freqTextSel: { color: COLORS.accent2 },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: DESIGN_COLORS.border2, backgroundColor: DESIGN_COLORS.surface, justifyContent: "center", alignItems: "center" },
+  checkboxChecked: { backgroundColor: DESIGN_COLORS.accent, borderColor: DESIGN_COLORS.accent },
+  recurringBox: { padding: 12, backgroundColor: DESIGN_COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: DESIGN_COLORS.border, marginBottom: 20 },
+  freqBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: DESIGN_COLORS.surface, borderWidth: 1, borderColor: DESIGN_COLORS.border, alignItems: "center" },
+  freqBtnSel: { borderColor: DESIGN_COLORS.accent, backgroundColor: DESIGN_COLORS.accentGlow },
+  freqText: { fontSize: 13, fontWeight: "700", color: DESIGN_COLORS.text2 },
+  freqTextSel: { color: DESIGN_COLORS.accent2 },
   footer: {
-    padding: 24, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.surface
+    padding: 24, borderTopWidth: 1, borderTopColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.surface
   },
   submitBtn: {
-    backgroundColor: COLORS.accent, paddingVertical: 16, borderRadius: 16,
+    backgroundColor: DESIGN_COLORS.accent, paddingVertical: 16, borderRadius: 16,
     alignItems: "center", marginBottom: 12,
-    shadowColor: COLORS.accent, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6
+    shadowColor: DESIGN_COLORS.accent, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6
   },
   submitText: { color: "#fff", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
   cancelBtn: {
     paddingVertical: 12, borderRadius: 12, alignItems: "center",
-    borderWidth: 1, borderColor: COLORS.border, backgroundColor: "transparent"
+    borderWidth: 1, borderColor: DESIGN_COLORS.border, backgroundColor: "transparent"
   },
-  cancelText: { color: COLORS.text2, fontSize: 14, fontWeight: "700" }
+  cancelText: { color: DESIGN_COLORS.text2, fontSize: 14, fontWeight: "700" }
 });

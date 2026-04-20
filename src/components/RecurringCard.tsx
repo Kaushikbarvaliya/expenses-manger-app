@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Switch, Dimensions } from "react-native";
 import { Edit2, Trash2, Calendar, Repeat, MoreVertical, Clock } from "lucide-react-native";
 import { RecurringTransaction } from "../types";
-import { CATEGORIES, INCOME_SOURCES, COLORS as DESIGN_COLORS } from "../constants/design";
+import { CATEGORIES, INCOME_SOURCES, DESIGN_COLORS } from "../constants/design";
 import theme from "../theme/theme";
 import { useCurrency } from "../context/CurrencyContext";
 
@@ -13,9 +13,10 @@ interface RecurringCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  occurrenceDate?: Date;
 }
 
-export function RecurringCard({ item, onEdit, onDelete, onToggle }: RecurringCardProps) {
+export function RecurringCard({ item, onEdit, onDelete, onToggle, occurrenceDate }: RecurringCardProps) {
   const { formatAmount } = useCurrency();
   const [showOptions, setShowOptions] = useState(false);
   const isExp = item.type === "expense";
@@ -35,7 +36,8 @@ export function RecurringCard({ item, onEdit, onDelete, onToggle }: RecurringCar
     );
   };
 
-  const nextDateFormatted = new Date(item.nextRunDate).toLocaleDateString("en-US", {
+  const displayDate = occurrenceDate || new Date(item.nextRunDate);
+  const nextDateFormatted = displayDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
@@ -65,7 +67,7 @@ export function RecurringCard({ item, onEdit, onDelete, onToggle }: RecurringCar
                 <Text style={styles.dot}>·</Text>
                 <View style={styles.badge}>
                   <Clock size={10} color={DESIGN_COLORS.text3} />
-                  <Text style={styles.badgeText}>Next: {nextDateFormatted}</Text>
+                  <Text style={styles.badgeText}>{occurrenceDate ? "Date: " : "Next: "}{nextDateFormatted}</Text>
                 </View>
               </View>
             </View>

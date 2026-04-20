@@ -8,7 +8,7 @@ import {
   Dimensions,
 } from "react-native";
 import { MoreVertical, Edit2, Trash2, TrendingUp, Target, ChevronDown, ChevronUp } from "lucide-react-native";
-import { CATEGORIES, COLORS as DESIGN_COLORS } from "../constants/design";
+import { CATEGORIES, DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 
 const { width } = Dimensions.get("window");
@@ -35,23 +35,43 @@ interface BudgetCardProps {
   expenses: Expense[];
   onEdit: (budget: Budget) => void;
   onDelete: (budgetId: string) => void;
+  filterType?: 'day' | 'month' | 'year';
+  selectedDate?: Date;
 }
 
-export function BudgetCard({ budget, expenses, onEdit, onDelete }: BudgetCardProps) {
+export function BudgetCard({ budget, expenses, onEdit, onDelete, filterType, selectedDate }: BudgetCardProps) {
   const { formatAmount } = useCurrency();
   const [showOptions, setShowOptions] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const periodLabel = budget.periodType === "yearly" ? `${budget.year}` : `${MONTH_FULL[budget.month - 1]} ${budget.year}`;
+  const isDayMode = filterType === 'day' && selectedDate;
   
-  // Filter expenses for this budget period
+  const periodLabel = isDayMode 
+    ? selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+    : budget.periodType === "yearly" ? `${budget.year}` : `${MONTH_FULL[budget.month - 1]} ${budget.year}`;
+  
+  // Filter expenses for this budget period AND filterType
   const scopedExp = expenses.filter((e) => {
     const d = new Date(e.date);
     if (isNaN(d.getTime())) return false;
-    const expYear = d.getFullYear();
-    const expMonth = d.getMonth() + 1;
-    if (budget.periodType === "yearly") return expYear === budget.year;
-    return expYear === budget.year && expMonth === budget.month;
+    
+    // Base period check (must belong to this budget's month/year)
+    const matchesBudgetPeriod = budget.periodType === "yearly" 
+      ? d.getFullYear() === budget.year 
+      : d.getFullYear() === budget.year && (d.getMonth() + 1) === budget.month;
+
+    if (!matchesBudgetPeriod) return false;
+
+    // Granularity check for "Day" mode
+    if (isDayMode) {
+      return (
+        d.getDate() === selectedDate.getDate() &&
+        d.getMonth() === selectedDate.getMonth() &&
+        d.getFullYear() === selectedDate.getFullYear()
+      );
+    }
+    
+    return true;
   });
   
   const spent = scopedExp.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);

@@ -1,11 +1,11 @@
-import React, { useEffect, useCallback, useMemo } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  ActivityIndicator, 
-  TouchableOpacity, 
+import React, { useEffect, useCallback, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
   RefreshControl,
   StatusBar,
   Dimensions
@@ -19,8 +19,10 @@ import { RootStackParamList } from "../navigation/types";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { fetchRecurring, deleteRecurring, toggleRecurring } from "../store/slices/recurringSlice";
 import { RecurringCard } from "../components/RecurringCard";
-import { COLORS as DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
+import { PeriodFilter, FilterType } from "../components/PeriodFilter";
+import { getOccurrencesInPeriod, RecurringOccurrence } from "../utils/recurringUtils";
 import theme from "../theme/theme";
 
 const { width } = Dimensions.get("window");
@@ -30,7 +32,9 @@ type Props = NativeStackScreenProps<RootStackParamList, "RecurringList">;
 export function RecurringListScreen({ navigation }: Props) {
   const { formatAmount } = useCurrency();
   const dispatch = useAppDispatch();
-  const { items, loading, error } = useAppSelector((state) => state.recurring);
+  const { items: rawItems, loading, error } = useAppSelector((state) => state.recurring);
+  // Guard: ensure items is always an array even if the API returned something unexpected
+  const items = Array.isArray(rawItems) ? rawItems : [];
 
   const loadData = useCallback(() => {
     dispatch(fetchRecurring());
@@ -52,22 +56,53 @@ export function RecurringListScreen({ navigation }: Props) {
     dispatch(toggleRecurring(id));
   };
 
-  // Calculate Summary Stats
-  const { activeCount, monthlyVolume } = useMemo(() => {
+  // Date Filtering State
+  const [filterType, setFilterType] = useState<FilterType>('month');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Calculate occurrences in the current period
+  const occurrences = useMemo(() => {
+    let startOfPeriod = new Date(selectedDate);
+    let endOfPeriod = new Date(selectedDate);
+
+    if (filterType === 'day') {
+      startOfPeriod.setHours(0, 0, 0, 0);
+      endOfPeriod.setHours(23, 59, 59, 999);
+    } else if (filterType === 'month') {
+      startOfPeriod = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      endOfPeriod = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else {
+      // year
+      startOfPeriod = new Date(selectedDate.getFullYear(), 0, 1);
+      endOfPeriod = new Date(selectedDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+    }
+
     const activeItems = items.filter(i => i.isActive);
-    const volume = activeItems.reduce((sum, item) => {
-      let monthlyAmt = item.amount;
-      if (item.frequency === "weekly") monthlyAmt = item.amount * 4;
-      if (item.frequency === "daily") monthlyAmt = item.amount * 30;
-      if (item.frequency === "yearly") monthlyAmt = item.amount / 12;
-      return sum + (item.type === "expense" ? -monthlyAmt : monthlyAmt);
+    const allOccs: RecurringOccurrence[] = [];
+
+    activeItems.forEach(item => {
+      const itemOccs = getOccurrencesInPeriod(item, startOfPeriod, endOfPeriod);
+      allOccs.push(...itemOccs);
+    });
+
+    // Sort occurrences by date
+    allOccs.sort((a, b) => a.occurrenceDate.getTime() - b.occurrenceDate.getTime());
+
+    return allOccs;
+  }, [items, filterType, selectedDate]);
+
+  // Calculate Summary Stats based on occurrences
+  const { occurrenceCount, periodImpact } = useMemo(() => {
+    const impact = occurrences.reduce((sum, occ) => {
+      const amt = occ.item.amount;
+      return sum + (occ.item.type === "expense" ? -amt : amt);
     }, 0);
 
     return {
-      activeCount: activeItems.length,
-      monthlyVolume: volume
+      occurrenceCount: occurrences.length,
+      periodImpact: impact
     };
-  }, [items]);
+  }, [occurrences]);
 
   const renderHeader = () => (
     <LinearGradient
@@ -78,29 +113,38 @@ export function RecurringListScreen({ navigation }: Props) {
     >
       <SafeAreaView edges={["top"]} style={styles.headerContent}>
         <View style={styles.topRow}>
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <ChevronRight size={24} color="#fff" style={{ transform: [{ rotate: "180deg" }] }} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Recurring Plans</Text>
-          <TouchableOpacity 
-            style={styles.plusButton} 
+          <TouchableOpacity
+            style={styles.plusButton}
             onPress={() => navigation.navigate("AddEditRecurring", { mode: "add" })}
           >
             <Plus size={24} color="#fff" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
 
+        <PeriodFilter
+          type={filterType}
+          onTypeChange={setFilterType}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
+
         <View style={styles.summaryContainer}>
-          <Text style={styles.summaryLabel}>Est. Monthly Impact</Text>
+          <Text style={styles.summaryLabel}>
+            {filterType.charAt(0).toUpperCase() + filterType.slice(1)} Impact
+          </Text>
           <Text style={styles.summaryAmount}>
-            {monthlyVolume >= 0 ? "+" : ""}{formatAmount(monthlyVolume)}
+            {periodImpact >= 0 ? "+" : ""}{formatAmount(periodImpact)}
           </Text>
           <View style={styles.countBadge}>
             <Repeat size={12} color="#fff" />
-            <Text style={styles.countText}>{activeCount} Active Automations</Text>
+            <Text style={styles.countText}>{occurrenceCount} Scheduled Runs</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -117,7 +161,7 @@ export function RecurringListScreen({ navigation }: Props) {
             <Text style={styles.statusText}>Secure</Text>
           </View>
         </View>
-        
+
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.cardLabel}>Upcoming Run</Text>
@@ -132,7 +176,7 @@ export function RecurringListScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.proBanner}
         onPress={() => navigation.navigate("AddEditRecurring", { mode: "add" })}
       >
@@ -169,31 +213,32 @@ export function RecurringListScreen({ navigation }: Props) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <FlatList
-        data={items}
+        data={occurrences}
         keyExtractor={(item) => item._id}
         ListHeaderComponent={
           <>
             {renderHeader()}
             {renderSummaryCard()}
             <View style={styles.listHeader}>
-              <Text style={styles.listTitle}>All Items</Text>
+              <Text style={styles.listTitle}>{filterType === 'day' ? 'Today\'s Items' : 'All Period Occurrences'}</Text>
             </View>
           </>
         }
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={loading} 
-            onRefresh={loadData} 
-            tintColor={DESIGN_COLORS.primary} 
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={loadData}
+            tintColor={DESIGN_COLORS.primary}
           />
         }
         renderItem={({ item }) => (
           <RecurringCard
-            item={item}
-            onEdit={() => handleEdit(item._id)}
-            onDelete={() => handleDelete(item._id)}
-            onToggle={() => handleToggle(item._id)}
+            item={item.item}
+            occurrenceDate={item.occurrenceDate}
+            onEdit={() => handleEdit(item.item._id)}
+            onDelete={() => handleDelete(item.item._id)}
+            onToggle={() => handleToggle(item.item._id)}
           />
         )}
         ListEmptyComponent={renderEmptyState}
@@ -220,7 +265,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 16,
   },
   backButton: {
     width: 44,

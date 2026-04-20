@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
-import { CATEGORIES, COLORS } from "../constants/design";
+import { CATEGORIES, DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -39,11 +39,11 @@ export function ExpensesScreen({ navigation }: any) {
   }, []);
 
   const loadExpenses = useCallback(async (isRefresh = false) => {
-     // Rely on background sync from Dashboard or global store, skip duplicate loading logic here when possible to prevent redundant flashes
-     if (isRefresh) {
-        setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 500); // Dummy refresh for feedback
-     }
+    // Rely on background sync from Dashboard or global store, skip duplicate loading logic here when possible to prevent redundant flashes
+    if (isRefresh) {
+      setRefreshing(true);
+      setTimeout(() => setRefreshing(false), 500); // Dummy refresh for feedback
+    }
   }, []);
 
   const handleDelete = async (expenseId: string) => {
@@ -54,7 +54,7 @@ export function ExpensesScreen({ navigation }: any) {
         style: "destructive",
         onPress: async () => {
           dispatch(deleteTransaction({ id: expenseId, type: 'expense' }));
-          
+
           if (user?.token) {
             try {
               await apiFetch<{ message: string }>(`/expenses/${expenseId}`, {
@@ -135,7 +135,7 @@ export function ExpensesScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1, backgroundColor: DESIGN_COLORS.bg },
   header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
   title: { fontSize: 28, fontWeight: "900", color: "#111827" },
   subtitle: { fontSize: 13, fontWeight: "800", color: "#4b5563", marginTop: 4 },

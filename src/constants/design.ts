@@ -1,4 +1,4 @@
-export const COLORS = {
+export const DESIGN_COLORS = {
   bg: "#F8F9FE",
   surface: "#ffffff",
   surface2: "#f0f0f6",

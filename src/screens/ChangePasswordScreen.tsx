@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getStoredUser } from "../storage/auth";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
-import { COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 
 export function ChangePasswordScreen({ navigation, route }: any) {
   const { step: initialStep = 1 } = route.params || {};
@@ -84,7 +84,7 @@ export function ChangePasswordScreen({ navigation, route }: any) {
   if (!user) {
     return (
       <SafeAreaView style={styles.safe}>
-         <ActivityIndicator size="large" color={COLORS.accent} style={{ marginTop: 100 }} />
+        <ActivityIndicator size="large" color={DESIGN_COLORS.accent} style={{ marginTop: 100 }} />
       </SafeAreaView>
     );
   }
@@ -97,13 +97,13 @@ export function ChangePasswordScreen({ navigation, route }: any) {
       >
         <ScrollView contentContainerStyle={styles.scroll}>
           <TouchableOpacity style={styles.backLink} onPress={() => navigation.goBack()}>
-             <Text style={styles.backLinkText}>← Back to Settings</Text>
+            <Text style={styles.backLinkText}>← Back to Settings</Text>
           </TouchableOpacity>
 
           <View style={styles.card}>
             <Text style={styles.title}>Change Password</Text>
             <Text style={styles.subtitle}>
-              {step === 1 
+              {step === 1
                 ? "We will send a one-time password (OTP) to your registered email to verify your identity."
                 : "Enter the 6-digit code sent to your email and choose a new password."}
             </Text>
@@ -124,7 +124,7 @@ export function ChangePasswordScreen({ navigation, route }: any) {
                   <TextInput
                     style={styles.input}
                     placeholder="Enter 6-digit OTP"
-                    placeholderTextColor={COLORS.text3}
+                    placeholderTextColor={DESIGN_COLORS.text3}
                     keyboardType="number-pad"
                     maxLength={6}
                     value={otp}
@@ -137,7 +137,7 @@ export function ChangePasswordScreen({ navigation, route }: any) {
                   <TextInput
                     style={styles.input}
                     placeholder="At least 6 characters"
-                    placeholderTextColor={COLORS.text3}
+                    placeholderTextColor={DESIGN_COLORS.text3}
                     secureTextEntry
                     value={newPassword}
                     onChangeText={setNewPassword}
@@ -149,7 +149,7 @@ export function ChangePasswordScreen({ navigation, route }: any) {
                   <TextInput
                     style={styles.input}
                     placeholder="Re-enter new password"
-                    placeholderTextColor={COLORS.text3}
+                    placeholderTextColor={DESIGN_COLORS.text3}
                     secureTextEntry
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -158,8 +158,8 @@ export function ChangePasswordScreen({ navigation, route }: any) {
               </>
             )}
 
-            <TouchableOpacity 
-              style={[styles.primaryButton, loading && { opacity: 0.7 }]} 
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && { opacity: 0.7 }]}
               onPress={step === 1 ? handleSendOtp : handleUpdatePassword}
               disabled={loading}
             >
@@ -173,9 +173,9 @@ export function ChangePasswordScreen({ navigation, route }: any) {
             </TouchableOpacity>
 
             {step === 2 && (
-               <TouchableOpacity onPress={handleSendOtp} style={styles.resendBtn}>
-                  <Text style={styles.resendBtnText}>Resend OTP</Text>
-               </TouchableOpacity>
+              <TouchableOpacity onPress={handleSendOtp} style={styles.resendBtn}>
+                <Text style={styles.resendBtnText}>Resend OTP</Text>
+              </TouchableOpacity>
             )}
           </View>
         </ScrollView>
@@ -185,39 +185,39 @@ export function ChangePasswordScreen({ navigation, route }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1, backgroundColor: DESIGN_COLORS.bg },
   scroll: { padding: 20 },
   backLink: { marginBottom: 20 },
-  backLinkText: { color: COLORS.text2, fontWeight: "700", fontSize: 14 },
+  backLinkText: { color: DESIGN_COLORS.text2, fontWeight: "700", fontSize: 14 },
   card: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: DESIGN_COLORS.surface,
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DESIGN_COLORS.border,
     gap: 16,
   },
-  title: { fontSize: 24, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: COLORS.text2, fontWeight: "600", marginBottom: 8, lineHeight: 20 },
+  title: { fontSize: 24, fontWeight: "900", color: DESIGN_COLORS.text, letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: DESIGN_COLORS.text2, fontWeight: "600", marginBottom: 8, lineHeight: 20 },
   field: { gap: 8 },
-  label: { fontSize: 11, fontWeight: "900", color: COLORS.text3, textTransform: "uppercase", letterSpacing: 0.5 },
+  label: { fontSize: 11, fontWeight: "900", color: DESIGN_COLORS.text3, textTransform: "uppercase", letterSpacing: 0.5 },
   input: {
-    backgroundColor: COLORS.surface2,
+    backgroundColor: DESIGN_COLORS.surface2,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DESIGN_COLORS.border,
     borderRadius: 14,
     padding: 14,
     fontSize: 15,
-    color: COLORS.text,
+    color: DESIGN_COLORS.text,
     fontWeight: "600",
   },
   primaryButton: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: DESIGN_COLORS.accent,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 8,
-    shadowColor: COLORS.accent,
+    shadowColor: DESIGN_COLORS.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -225,5 +225,5 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: "#fff", fontWeight: "900", fontSize: 16 },
   resendBtn: { marginTop: 8, alignItems: "center" },
-  resendBtnText: { color: COLORS.accent, fontWeight: "700", fontSize: 13 },
+  resendBtnText: { color: DESIGN_COLORS.accent, fontWeight: "700", fontSize: 13 },
 });

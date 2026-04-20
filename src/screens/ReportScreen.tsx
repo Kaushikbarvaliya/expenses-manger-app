@@ -15,7 +15,7 @@ import { PieChart, LineChart } from "react-native-gifted-charts";
 import { ChevronLeft, BarChart2, PieChart as PieIcon, ChevronDown } from "lucide-react-native";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
-import { CATEGORIES, COLORS, INCOME_SOURCES } from "../constants/design";
+import { CATEGORIES, DESIGN_COLORS, INCOME_SOURCES } from "../constants/design";
 import { AppDatePicker } from "../components/AppDatePicker";
 import { useCurrency } from "../context/CurrencyContext";
 import theme from "../theme/theme";
@@ -86,7 +86,7 @@ export function ReportScreen({ navigation }: any) {
 
       return {
         value,
-        color: meta?.color || COLORS.primary,
+        color: meta?.color || DESIGN_COLORS.primary,
         label: meta?.label || key,
         percentage: totalAmount > 0 ? ((value / totalAmount) * 100).toFixed(1) : "0",
         icon: meta?.icon || "❓",
@@ -125,7 +125,7 @@ export function ReportScreen({ navigation }: any) {
   }, [transactions, reportType, selectedDate]);
 
 
-  if (loading) return <View style={styles.center}><ActivityIndicator color={COLORS.primary} /></View>;
+  if (loading) return <View style={styles.center}><ActivityIndicator color={DESIGN_COLORS.primary} /></View>;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -136,7 +136,7 @@ export function ReportScreen({ navigation }: any) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <ChevronLeft color={COLORS.text} size={28} />
+            <ChevronLeft color={DESIGN_COLORS.text} size={28} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Report</Text>
           <View style={styles.monthPickerContainer}>
@@ -170,10 +170,10 @@ export function ReportScreen({ navigation }: any) {
             <Text style={styles.chartTitle}>{reportType === "expense" ? "Expenses" : "Income"} Report</Text>
             <View style={styles.chartToggles}>
               <TouchableOpacity onPress={() => setChartType("line")} style={styles.toggleIcon}>
-                <BarChart2 size={20} color={chartType === "line" ? COLORS.primary : COLORS.text3} />
+                <BarChart2 size={20} color={chartType === "line" ? DESIGN_COLORS.primary : DESIGN_COLORS.text3} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setChartType("donut")} style={styles.toggleIcon}>
-                <PieIcon size={20} color={chartType === "donut" ? COLORS.primary : COLORS.text3} />
+                <PieIcon size={20} color={chartType === "donut" ? DESIGN_COLORS.primary : DESIGN_COLORS.text3} />
               </TouchableOpacity>
             </View>
           </View>
@@ -200,14 +200,14 @@ export function ReportScreen({ navigation }: any) {
                   data={lineData}
                   height={180}
                   width={width - 80}
-                  color={COLORS.primary}
+                  color={DESIGN_COLORS.primary}
                   thickness={3}
                   hideDataPoints
                   noOfSections={3}
-                  yAxisTextStyle={{ color: COLORS.text3, fontSize: 10 }}
-                  xAxisLabelTextStyle={{ color: COLORS.text3, fontSize: 10 }}
+                  yAxisTextStyle={{ color: DESIGN_COLORS.text3, fontSize: 10 }}
+                  xAxisLabelTextStyle={{ color: DESIGN_COLORS.text3, fontSize: 10 }}
                   areaChart
-                  startFillColor={COLORS.primary}
+                  startFillColor={DESIGN_COLORS.primary}
                   startOpacity={0.2}
                   endOpacity={0}
                 />
@@ -235,7 +235,7 @@ export function ReportScreen({ navigation }: any) {
                 </View>
                 <View style={styles.categoryValueContainer}>
                   <Text style={styles.categoryAmount}>{formatAmount(item.value)}</Text>
-                  <Text style={[styles.trendText, { color: COLORS.green }]}>+12% <Text style={{ color: COLORS.text3, fontWeight: "400" }}>vs last month</Text></Text>
+                  <Text style={[styles.trendText, { color: DESIGN_COLORS.green }]}>+12% <Text style={{ color: DESIGN_COLORS.text3, fontWeight: "400" }}>vs last month</Text></Text>
                 </View>
               </View>
               {/* Progress Bar */}
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
   },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: COLORS.text },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: DESIGN_COLORS.text },
   monthPickerContainer: {
     width: 150,
     marginBottom: -theme.SPACING.lg,
@@ -274,9 +274,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DESIGN_COLORS.border,
   },
-  monthText: { fontSize: 13, fontWeight: "600", color: COLORS.text, marginRight: 4 },
+  monthText: { fontSize: 13, fontWeight: "600", color: DESIGN_COLORS.text, marginRight: 4 },
   typeToggle: {
     flexDirection: "row",
     backgroundColor: "#F1F5F9",
@@ -287,8 +287,8 @@ const styles = StyleSheet.create({
   },
   typeBtn: { flex: 1, paddingVertical: 12, alignItems: "center", borderRadius: 16 },
   typeBtnActive: { backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-  typeBtnText: { fontSize: 15, fontWeight: "600", color: COLORS.text3 },
-  typeBtnTextActive: { color: COLORS.text },
+  typeBtnText: { fontSize: 15, fontWeight: "600", color: DESIGN_COLORS.text3 },
+  typeBtnTextActive: { color: DESIGN_COLORS.text },
   chartContainer: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
@@ -301,18 +301,18 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   chartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  chartTitle: { fontSize: 16, fontWeight: "700", color: COLORS.text },
+  chartTitle: { fontSize: 16, fontWeight: "700", color: DESIGN_COLORS.text },
   chartToggles: { flexDirection: "row", backgroundColor: "#F8FAFC", borderRadius: 12, padding: 4 },
   toggleIcon: { padding: 8, borderRadius: 8 },
   chartView: { alignItems: "center", justifyContent: "center", minHeight: 250 },
   donutWrapper: { paddingVertical: 10 },
-  centerLabel: { fontSize: 12, color: COLORS.text2, fontWeight: "600", marginBottom: 4 },
-  centerValue: { fontSize: 24, fontWeight: "800", color: COLORS.text },
+  centerLabel: { fontSize: 12, color: DESIGN_COLORS.text2, fontWeight: "600", marginBottom: 4 },
+  centerValue: { fontSize: 24, fontWeight: "800", color: DESIGN_COLORS.text },
   lineWrapper: { paddingVertical: 10 },
   categoriesSection: { paddingHorizontal: 20, marginTop: 30 },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  sectionTitle: { fontSize: 14, fontWeight: "600", color: COLORS.text3 },
-  sectionTotal: { fontSize: 14, color: COLORS.text2 },
+  sectionTitle: { fontSize: 14, fontWeight: "600", color: DESIGN_COLORS.text3 },
+  sectionTotal: { fontSize: 14, color: DESIGN_COLORS.text2 },
   categoryCard: {
     backgroundColor: "#fff",
     borderRadius: 24,
@@ -324,10 +324,10 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 15 },
   categoryIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: "center", alignItems: "center" },
   categoryInfo: { flex: 1, marginLeft: 15 },
-  categoryName: { fontSize: 15, fontWeight: "700", color: COLORS.text },
-  categoryMeta: { fontSize: 12, color: COLORS.text3, marginTop: 2 },
+  categoryName: { fontSize: 15, fontWeight: "700", color: DESIGN_COLORS.text },
+  categoryMeta: { fontSize: 12, color: DESIGN_COLORS.text3, marginTop: 2 },
   categoryValueContainer: { alignItems: "flex-end" },
-  categoryAmount: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  categoryAmount: { fontSize: 15, fontWeight: "800", color: DESIGN_COLORS.text },
   trendText: { fontSize: 11, fontWeight: "700", marginTop: 2 },
   progressBarBg: { height: 6, backgroundColor: "#F1F5F9", borderRadius: 3, overflow: "hidden" },
   progressBarFill: { height: "100%", borderRadius: 3 },

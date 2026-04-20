@@ -20,7 +20,7 @@ import { RootStackParamList } from "../navigation/types";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { addRecurring, updateRecurring } from "../store/slices/recurringSlice";
 import { AppDatePicker } from "../components/AppDatePicker";
-import { CATEGORIES, INCOME_SOURCES, COLORS as DESIGN_COLORS } from "../constants/design";
+import { CATEGORIES, INCOME_SOURCES, DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import theme from "../theme/theme";
 
@@ -111,7 +111,7 @@ export function AddEditRecurringScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
@@ -125,8 +125,8 @@ export function AddEditRecurringScreen({ navigation, route }: Props) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -148,9 +148,9 @@ export function AddEditRecurringScreen({ navigation, route }: Props) {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
               {[500, 1000, 2000, 5000, 10000].map(val => (
-                <TouchableOpacity 
-                  key={val} 
-                  style={styles.quickAmtBtn} 
+                <TouchableOpacity
+                  key={val}
+                  style={styles.quickAmtBtn}
                   onPress={() => setAmount(String(val))}
                 >
                   <Text style={styles.quickAmtText}>{currencySymbol}{val}</Text>
@@ -201,7 +201,7 @@ export function AddEditRecurringScreen({ navigation, route }: Props) {
                   <TouchableOpacity
                     key={cat.id}
                     style={[
-                      styles.categoryPill, 
+                      styles.categoryPill,
                       isSel && { borderColor: cat.color, backgroundColor: cat.color + "15" }
                     ]}
                     onPress={() => setCategory(cat.id)}
@@ -271,7 +271,7 @@ export function AddEditRecurringScreen({ navigation, route }: Props) {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.saveButtonText}>
-              {isValid 
+              {isValid
                 ? `${selectedCat.icon} ${isEditing ? "Update" : "Schedule"} ${formatAmount(parseFloat(amount))}`
                 : "Schedule Plan"}
             </Text>

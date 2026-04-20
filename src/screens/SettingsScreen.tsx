@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { clearStoredUser, getStoredUser } from "../storage/auth";
 import type { StoredUser } from "../navigation/types";
-import { COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { apiFetch } from "../api/client";
 import { useCurrency } from "../context/CurrencyContext";
 import { useAppDispatch } from "../store/hooks";
@@ -210,16 +210,16 @@ export function SettingsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
+  safe: { flex: 1, backgroundColor: DESIGN_COLORS.bg },
   header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 },
-  pageTitle: { fontSize: 28, fontWeight: "900", color: COLORS.text },
+  pageTitle: { fontSize: 28, fontWeight: "900", color: DESIGN_COLORS.text },
   scroll: { paddingHorizontal: 16, paddingBottom: 40, gap: 16 },
 
   card: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: DESIGN_COLORS.border,
+    backgroundColor: DESIGN_COLORS.surface,
     padding: 20,
   },
   cardHeader: {
@@ -228,50 +228,50 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
+  sectionTitle: { fontSize: 18, fontWeight: "800", color: DESIGN_COLORS.text },
 
   avatarRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 24 },
   avatar: {
-    width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.accent,
+    width: 60, height: 60, borderRadius: 30, backgroundColor: DESIGN_COLORS.accent,
     justifyContent: "center", alignItems: "center"
   },
   avatarText: { fontSize: 22, fontWeight: "800", color: "#ffffff" },
-  userName: { fontWeight: "800", fontSize: 16, color: COLORS.text, marginBottom: 2 },
-  userEmail: { fontSize: 13, color: COLORS.text3, fontWeight: "500", marginBottom: 6 },
+  userName: { fontWeight: "800", fontSize: 16, color: DESIGN_COLORS.text, marginBottom: 2 },
+  userEmail: { fontSize: 13, color: DESIGN_COLORS.text3, fontWeight: "500", marginBottom: 6 },
   badge: {
     alignSelf: "flex-start", backgroundColor: "rgba(16,185,129,0.15)", borderRadius: 12,
     paddingVertical: 4, paddingHorizontal: 8
   },
-  badgeText: { fontSize: 11, fontWeight: "800", color: COLORS.green },
+  badgeText: { fontSize: 11, fontWeight: "800", color: DESIGN_COLORS.green },
 
   formGroup: { marginBottom: 16 },
-  label: { fontSize: 12, fontWeight: "700", color: COLORS.text2, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: "700", color: DESIGN_COLORS.text2, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   input: {
-    backgroundColor: COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border,
-    padding: 14, fontSize: 15, color: COLORS.text, fontWeight: "600", opacity: 0.7
+    backgroundColor: DESIGN_COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: DESIGN_COLORS.border,
+    padding: 14, fontSize: 15, color: DESIGN_COLORS.text, fontWeight: "600", opacity: 0.7
   },
   inputReadOnlyBox: {
-    backgroundColor: COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border,
+    backgroundColor: DESIGN_COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: DESIGN_COLORS.border,
     padding: 14, opacity: 0.8
   },
 
   logoutBtn: {
-    backgroundColor: COLORS.red, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: DESIGN_COLORS.red, paddingVertical: 8, borderRadius: 10,
     alignItems: "center", alignSelf: "flex-start", paddingHorizontal: 16
   },
   logoutBtnText: { color: "#fff", fontSize: 13, fontWeight: "800" },
 
   secondaryBtn: {
-    backgroundColor: COLORS.surface2, paddingVertical: 14, borderRadius: 12,
-    borderWidth: 1, borderColor: COLORS.border, alignItems: "center", alignSelf: "stretch"
+    backgroundColor: DESIGN_COLORS.surface2, paddingVertical: 14, borderRadius: 12,
+    borderWidth: 1, borderColor: DESIGN_COLORS.border, alignItems: "center", alignSelf: "stretch"
   },
-  secondaryBtnText: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
+  secondaryBtnText: { color: DESIGN_COLORS.text, fontSize: 14, fontWeight: "800" },
 
   toggleRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.border
   },
-  toggleLabel: { fontSize: 14, fontWeight: "600", color: COLORS.text },
+  toggleLabel: { fontSize: 14, fontWeight: "600", color: DESIGN_COLORS.text },
 
   // Currency Toggle Styles
   currencyToggleRow: {
@@ -281,24 +281,24 @@ const styles = StyleSheet.create({
   },
   currencyBtn: {
     flex: 1,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: DESIGN_COLORS.surface2,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: DESIGN_COLORS.border,
     paddingVertical: 12,
     alignItems: "center",
   },
   currencyBtnActive: {
-    backgroundColor: COLORS.accent + "15",
-    borderColor: COLORS.accent,
+    backgroundColor: DESIGN_COLORS.accent + "15",
+    borderColor: DESIGN_COLORS.accent,
   },
   currencyBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: COLORS.text2,
+    color: DESIGN_COLORS.text2,
   },
   currencyBtnTextActive: {
-    color: COLORS.accent,
+    color: DESIGN_COLORS.accent,
   },
 
   // Guest mode styles
@@ -311,19 +311,19 @@ const styles = StyleSheet.create({
   guestTitle: {
     fontSize: 17,
     fontWeight: "800",
-    color: COLORS.text,
+    color: DESIGN_COLORS.text,
     textAlign: "center",
   },
   guestSubtitle: {
     fontSize: 13,
     fontWeight: "500",
-    color: COLORS.text2,
+    color: DESIGN_COLORS.text2,
     textAlign: "center",
     lineHeight: 20,
   },
   signinBtn: {
     marginTop: 8,
-    backgroundColor: COLORS.accent,
+    backgroundColor: DESIGN_COLORS.accent,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 24,

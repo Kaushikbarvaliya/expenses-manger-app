@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = "http://192.168.1.13:8000/api";
+const DEFAULT_API_BASE = "http://192.168.1.19:8000/api";
 const ANDROID_EMULATOR_API_BASE = "http://10.0.2.2:8000/api";
 
 type Env = {

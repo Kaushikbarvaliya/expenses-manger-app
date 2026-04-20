@@ -8,7 +8,7 @@ import { RecurringListScreen } from "../screens/RecurringListScreen";
 import { BudgetsScreen } from "../screens/BudgetsScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { TabParamList } from "./types";
-import { COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { useAppSelector } from "../store/hooks";
 
 const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
@@ -21,9 +21,9 @@ const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => {
 
   return (
     <View style={{ alignItems: "center", justifyContent: "center", paddingTop: 10 }}>
-      <IconComponent 
-        size={24} 
-        color={focused ? COLORS.primary : COLORS.text3} 
+      <IconComponent
+        size={24}
+        color={focused ? DESIGN_COLORS.primary : DESIGN_COLORS.text3}
         strokeWidth={focused ? 2.5 : 2}
       />
     </View>
@@ -45,8 +45,8 @@ export function AppTabs({ navigation }: any) {
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
-          tabBarActiveTintColor: COLORS.primary,
-          tabBarInactiveTintColor: COLORS.text3,
+          tabBarActiveTintColor: DESIGN_COLORS.primary,
+          tabBarInactiveTintColor: DESIGN_COLORS.text3,
           tabBarStyle: styles.tabBar,
           tabBarBackground: () => (
             <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="light" />
@@ -56,15 +56,15 @@ export function AppTabs({ navigation }: any) {
       >
         <Tab.Screen name="Home" component={DashboardScreen} />
         <Tab.Screen name="Recurring" component={RecurringListScreen} />
-        
-        <Tab.Screen 
-          name="AddPlaceholder" 
-          component={View as any} 
+
+        <Tab.Screen
+          name="AddPlaceholder"
+          component={View as any}
           options={{
             tabBarLabel: () => null,
             tabBarButton: () => (
-              <TouchableOpacity 
-                style={styles.floatingButtonContainer} 
+              <TouchableOpacity
+                style={styles.floatingButtonContainer}
                 activeOpacity={0.9}
                 onPress={handleFabPress}
               >
@@ -115,10 +115,10 @@ const styles = StyleSheet.create({
     width: 65,
     height: 65,
     borderRadius: 32.5,
-    backgroundColor: COLORS.primary,
+    backgroundColor: DESIGN_COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: COLORS.primary,
+    shadowColor: DESIGN_COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 12,

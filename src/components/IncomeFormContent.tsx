@@ -16,9 +16,10 @@ import { getActiveSheetId, getStoredUser } from "../storage/auth";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { addTransaction, updateTransaction, selectActiveTransactions } from "../store/slices/transactionSlice";
 import type { Income } from "../types";
-import { INCOME_SOURCES, COLORS, PAYMENT_METHODS } from "../constants/design";
+import { INCOME_SOURCES, DESIGN_COLORS, PAYMENT_METHODS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import { generateUUID } from "../utils/uuid";
+import { AppDatePicker } from "./AppDatePicker";
 
 export function IncomeFormContent({ navigation }: any) {
   const { currencySymbol } = useCurrency();
@@ -33,7 +34,8 @@ export function IncomeFormContent({ navigation }: any) {
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState("salary");
   const [customSourceName, setCustomSourceName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState<string | null>(new Date().toISOString());
+  const [dateError, setDateError] = useState("");
   const [method, setMethod] = useState("salary");
   const [note, setNote] = useState("");
   const [member, setMember] = useState("");
@@ -53,18 +55,18 @@ export function IncomeFormContent({ navigation }: any) {
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        
+
         let apiMembers: any[] = [];
         if (u?.token) {
-           const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
-           apiMembers = Array.isArray(famRes) ? famRes : [];
+          const famRes = await apiFetch<any[]>("/family-members", { token: u.token, sheetId: sid || undefined }).catch(() => []);
+          apiMembers = Array.isArray(famRes) ? famRes : [];
         }
-        
+
         const combinedMembers = [{ _id: "self", name: u?.name || "Me" }, ...apiMembers.filter(m => m._id !== u?._id)];
         setFamilyMembers(combinedMembers);
-        
+
         if (combinedMembers.length > 0) {
-            setMember(combinedMembers[0]._id);
+          setMember(combinedMembers[0]._id);
         }
       } catch (e: unknown) {
         // silently catch offline
@@ -80,20 +82,29 @@ export function IncomeFormContent({ navigation }: any) {
 
   // Parity isValid
   const numAmount = parseFloat(amount);
-  const isValid = amount !== "" && !isNaN(numAmount) && numAmount > 0 && Boolean(member) && (source !== "other" || customSourceName.trim().length > 0) && (!recurring || Boolean(frequency));
+  const isValid = amount !== "" && !isNaN(numAmount) && numAmount > 0 && Boolean(date) && Boolean(member) && (source !== "other" || customSourceName.trim().length > 0) && (!recurring || Boolean(frequency));
+
+  const handleDateChange = (iso: string) => {
+    setDate(iso);
+    if (iso) setDateError("");
+  };
 
   const handleSave = async () => {
+    if (!date) {
+      setDateError("Please select a date.");
+      return;
+    }
     if (!isValid || saving) return;
     setSaving(true);
     try {
       const selectedMemberName = familyMembers.find(m => m._id === member)?.name || "Me";
-      
+
       const payload: Income = {
         _id: generateUUID(),
         name: name.trim() || (source === "other" ? customSourceName.trim() : selectedSource?.label) || "Income",
         amount: numAmount,
         source: finalSource,
-        date,
+        date: (date ?? new Date().toISOString()).split("T")[0],
         method,
         familyMemberName: selectedMemberName,
         type: 'income'
@@ -105,14 +116,14 @@ export function IncomeFormContent({ navigation }: any) {
       try {
         const u = await getStoredUser();
         const sid = await getActiveSheetId();
-        
+
         const body = {
-          name: payload.name, 
-          amount: payload.amount, 
-          source: payload.source, 
+          name: payload.name,
+          amount: payload.amount,
+          source: payload.source,
           date: payload.date,
-          method: payload.method, 
-          memberId: member, 
+          method: payload.method,
+          memberId: member,
           note: note.trim() || undefined,
           recurring,
           frequency: recurring ? frequency : undefined,
@@ -126,7 +137,7 @@ export function IncomeFormContent({ navigation }: any) {
           body: JSON.stringify(body),
         });
       } catch (e) {
-         // Silently fail API
+        // Silently fail API
       }
 
       navigation.goBack();
@@ -140,7 +151,7 @@ export function IncomeFormContent({ navigation }: any) {
   if (loading) {
     return (
       <View style={[styles.safe, styles.center]}>
-        <ActivityIndicator size="large" color={COLORS.green} />
+        <ActivityIndicator size="large" color={DESIGN_COLORS.green} />
       </View>
     );
   }
@@ -150,25 +161,25 @@ export function IncomeFormContent({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Amount Box */}
         <View style={styles.amountContainer}>
-           <Text style={styles.amountLabel}>AMOUNT</Text>
-           <View style={styles.amountWrap}>
-             <Text style={[styles.currencyPrefix, { color: isValid ? COLORS.green : COLORS.text3 }]}>{currencySymbol}</Text>
-             <TextInput
-               style={[styles.amountInput, { color: isValid ? COLORS.text : COLORS.text3 }]}
-               placeholder="0"
-               keyboardType="numeric"
-               value={amount}
-               onChangeText={setAmount}
-               placeholderTextColor={COLORS.text3}
-             />
-           </View>
-           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
-             {[1000, 2000, 5000, 10000, 20000, 50000].map(val => (
-               <TouchableOpacity key={val} style={styles.quickAmtBtn} onPress={() => setAmount(String(val))}>
-                 <Text style={styles.quickAmtText}>{currencySymbol}{val}</Text>
-               </TouchableOpacity>
-             ))}
-           </ScrollView>
+          <Text style={styles.amountLabel}>AMOUNT</Text>
+          <View style={styles.amountWrap}>
+            <Text style={[styles.currencyPrefix, { color: isValid ? DESIGN_COLORS.green : DESIGN_COLORS.text3 }]}>{currencySymbol}</Text>
+            <TextInput
+              style={[styles.amountInput, { color: isValid ? DESIGN_COLORS.text : DESIGN_COLORS.text3 }]}
+              placeholder="0"
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={setAmount}
+              placeholderTextColor={DESIGN_COLORS.text3}
+            />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmounts}>
+            {[1000, 2000, 5000, 10000, 20000, 50000].map(val => (
+              <TouchableOpacity key={val} style={styles.quickAmtBtn} onPress={() => setAmount(String(val))}>
+                <Text style={styles.quickAmtText}>{currencySymbol}{val}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Form Fields */}
@@ -217,12 +228,12 @@ export function IncomeFormContent({ navigation }: any) {
 
         <View style={styles.formRow}>
           <View style={[styles.formGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Date</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
+            <AppDatePicker
+              label="Date"
               value={date}
-              onChangeText={setDate}
+              onChange={handleDateChange}
+              allowModeSwitch={false}
+              error={dateError}
             />
           </View>
         </View>
@@ -230,18 +241,18 @@ export function IncomeFormContent({ navigation }: any) {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Member</Text>
           {familyMembers.length === 0 ? (
-              <Text style={{ fontSize: 13, color: COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
+            <Text style={{ fontSize: 13, color: DESIGN_COLORS.amber, marginTop: 4 }}>Add a family member first from the Members tab.</Text>
           ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {familyMembers.map((m) => {
-                      const isSel = member === m._id;
-                      return (
-                          <TouchableOpacity key={m._id} style={[styles.memberChip, isSel && styles.memberChipSelected]} onPress={() => setMember(m._id)}>
-                              <Text style={[styles.memberChipText, isSel && styles.memberChipTextSelected]}>{m.name}</Text>
-                          </TouchableOpacity>
-                      );
-                  })}
-              </ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {familyMembers.map((m) => {
+                const isSel = member === m._id;
+                return (
+                  <TouchableOpacity key={m._id} style={[styles.memberChip, isSel && styles.memberChipSelected]} onPress={() => setMember(m._id)}>
+                    <Text style={[styles.memberChipText, isSel && styles.memberChipTextSelected]}>{m.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           )}
         </View>
 
@@ -276,40 +287,40 @@ export function IncomeFormContent({ navigation }: any) {
           />
         </View>
 
-        <TouchableOpacity 
-            style={[styles.formGroup, { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: recurring ? 12 : 24 }]}
-            onPress={() => setRecurring(!recurring)}
-            activeOpacity={0.7}
+        <TouchableOpacity
+          style={[styles.formGroup, { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: recurring ? 12 : 24 }]}
+          onPress={() => setRecurring(!recurring)}
+          activeOpacity={0.7}
         >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View style={[styles.checkbox, recurring && styles.checkboxChecked]}>
-                    {recurring && <Text style={{ color: "#fff", fontSize: 14 }}>✓</Text>}
-                </View>
-                <View>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.text }}>Recurring Income</Text>
-                    <Text style={{ fontSize: 12, color: COLORS.text3, marginTop: 2 }}>Automatically add this every {frequency}</Text>
-                </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={[styles.checkbox, recurring && styles.checkboxChecked]}>
+              {recurring && <Text style={{ color: "#fff", fontSize: 14 }}>✓</Text>}
             </View>
+            <View>
+              <Text style={{ fontSize: 15, fontWeight: "700", color: DESIGN_COLORS.text }}>Recurring Income</Text>
+              <Text style={{ fontSize: 12, color: DESIGN_COLORS.text3, marginTop: 2 }}>Automatically add this every {frequency}</Text>
+            </View>
+          </View>
         </TouchableOpacity>
 
         {recurring && (
-            <View style={styles.recurringBox}>
-                <Text style={styles.label}>Frequency</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                    <TouchableOpacity style={[styles.freqBtn, frequency === "daily" && styles.freqBtnSel]} onPress={() => setFrequency("daily")}>
-                        <Text style={[styles.freqText, frequency === "daily" && styles.freqTextSel]}>Daily</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.freqBtn, frequency === "weekly" && styles.freqBtnSel]} onPress={() => setFrequency("weekly")}>
-                        <Text style={[styles.freqText, frequency === "weekly" && styles.freqTextSel]}>Weekly</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.freqBtn, frequency === "monthly" && styles.freqBtnSel]} onPress={() => setFrequency("monthly")}>
-                        <Text style={[styles.freqText, frequency === "monthly" && styles.freqTextSel]}>Monthly</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.freqBtn, frequency === "yearly" && styles.freqBtnSel]} onPress={() => setFrequency("yearly")}>
-                        <Text style={[styles.freqText, frequency === "yearly" && styles.freqTextSel]}>Yearly</Text>
-                    </TouchableOpacity>
-                </View>
+          <View style={styles.recurringBox}>
+            <Text style={styles.label}>Frequency</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <TouchableOpacity style={[styles.freqBtn, frequency === "daily" && styles.freqBtnSel]} onPress={() => setFrequency("daily")}>
+                <Text style={[styles.freqText, frequency === "daily" && styles.freqTextSel]}>Daily</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.freqBtn, frequency === "weekly" && styles.freqBtnSel]} onPress={() => setFrequency("weekly")}>
+                <Text style={[styles.freqText, frequency === "weekly" && styles.freqTextSel]}>Weekly</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.freqBtn, frequency === "monthly" && styles.freqBtnSel]} onPress={() => setFrequency("monthly")}>
+                <Text style={[styles.freqText, frequency === "monthly" && styles.freqTextSel]}>Monthly</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.freqBtn, frequency === "yearly" && styles.freqBtnSel]} onPress={() => setFrequency("yearly")}>
+                <Text style={[styles.freqText, frequency === "yearly" && styles.freqTextSel]}>Yearly</Text>
+              </TouchableOpacity>
             </View>
+          </View>
         )}
 
         <View style={{ height: 40 }} />
@@ -317,16 +328,16 @@ export function IncomeFormContent({ navigation }: any) {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.submitBtn, !isValid && { opacity: 0.5, backgroundColor: COLORS.surface3, shadowOpacity: 0 }]}
+          style={[styles.submitBtn, !isValid && { opacity: 0.5, backgroundColor: DESIGN_COLORS.surface3, shadowOpacity: 0 }]}
           onPress={() => void handleSave()}
           disabled={!isValid || saving}
         >
           {saving ? <ActivityIndicator color="#fff" /> : (
-              <Text style={[styles.submitText, !isValid && { color: COLORS.text2 }]}>
-                  {isValid ? (
-                      `${selectedSource?.icon || "×"} Add +${currencySymbol}${numAmount} · ${source === "other" ? (customSourceName.trim() || "Custom Source") : selectedSource?.label}`
-                  ) : "× Add Income"}
-              </Text>
+            <Text style={[styles.submitText, !isValid && { color: DESIGN_COLORS.text2 }]}>
+              {isValid ? (
+                `${selectedSource?.icon || "×"} Add +${currencySymbol}${numAmount} · ${source === "other" ? (customSourceName.trim() || "Custom Source") : selectedSource?.label}`
+              ) : "× Add Income"}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -335,70 +346,70 @@ export function IncomeFormContent({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.surface },
+  safe: { flex: 1, backgroundColor: DESIGN_COLORS.surface },
   flex: { flex: 1 },
   center: { justifyContent: "center", alignItems: "center" },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
   amountContainer: {
-     backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border,
-     borderRadius: 16, padding: 16, marginBottom: 20
+    backgroundColor: DESIGN_COLORS.surface2, borderWidth: 1, borderColor: DESIGN_COLORS.border,
+    borderRadius: 16, padding: 16, marginBottom: 20
   },
-  amountLabel: { fontSize: 11, fontWeight: "600", color: COLORS.text3, letterSpacing: 0.6, marginBottom: 8 },
+  amountLabel: { fontSize: 11, fontWeight: "600", color: DESIGN_COLORS.text3, letterSpacing: 0.6, marginBottom: 8 },
   amountWrap: {
     flexDirection: "row", alignItems: "center",
   },
-  currencyPrefix: { fontSize: 24, fontWeight: "800", color: COLORS.text2 },
+  currencyPrefix: { fontSize: 24, fontWeight: "800", color: DESIGN_COLORS.text2 },
   amountInput: {
-    flex: 1, fontSize: 36, fontWeight: "800", color: COLORS.text, paddingVertical: 8, marginLeft: 6
+    flex: 1, fontSize: 36, fontWeight: "800", color: DESIGN_COLORS.text, paddingVertical: 8, marginLeft: 6
   },
   quickAmounts: { marginTop: 10, gap: 6 },
-  quickAmtBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
-  quickAmtText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
+  quickAmtBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: DESIGN_COLORS.surface, borderWidth: 1, borderColor: DESIGN_COLORS.border },
+  quickAmtText: { fontSize: 13, fontWeight: "700", color: DESIGN_COLORS.text2 },
   formGroup: { marginBottom: 20 },
   formRow: { flexDirection: "row", gap: 12 },
   label: {
-    fontSize: 12, fontWeight: "700", color: COLORS.text2,
+    fontSize: 12, fontWeight: "700", color: DESIGN_COLORS.text2,
     textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8
   },
   input: {
-    backgroundColor: COLORS.surface2, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border,
-    padding: 14, fontSize: 15, color: COLORS.text, fontWeight: "600"
+    backgroundColor: DESIGN_COLORS.surface2, borderRadius: 14, borderWidth: 1, borderColor: DESIGN_COLORS.border,
+    padding: 14, fontSize: 15, color: DESIGN_COLORS.text, fontWeight: "600"
   },
   grid4: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
   pill: {
     width: "22%", alignItems: "center", paddingVertical: 12, marginHorizontal: "1.5%", marginBottom: 8,
-    borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface
+    borderRadius: 14, borderWidth: 1, borderColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.surface
   },
   pillIcon: { fontSize: 22, marginBottom: 4 },
-  pillLabel: { fontSize: 11, fontWeight: "700", color: COLORS.text2 },
+  pillLabel: { fontSize: 11, fontWeight: "700", color: DESIGN_COLORS.text2 },
   grid3: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
   payPill: {
     width: "30%", flexDirection: "row", alignItems: "center", justifyContent: "center",
     paddingVertical: 12, marginHorizontal: "1.5%", marginBottom: 8, borderRadius: 14,
-    borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surface
+    borderWidth: 1, borderColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.surface
   },
-  payPillSelected: { borderColor: COLORS.green, backgroundColor: "rgba(5, 150, 105, 0.15)" },
+  payPillSelected: { borderColor: DESIGN_COLORS.green, backgroundColor: "rgba(5, 150, 105, 0.15)" },
   payIcon: { fontSize: 16, marginRight: 6 },
-  payLabel: { fontSize: 12, fontWeight: "700", color: COLORS.text2 },
-  payLabelSelected: { color: COLORS.green },
-  memberChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.border },
-  memberChipSelected: { backgroundColor: COLORS.green, borderColor: COLORS.green },
-  memberChipText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
+  payLabel: { fontSize: 12, fontWeight: "700", color: DESIGN_COLORS.text2 },
+  payLabelSelected: { color: DESIGN_COLORS.green },
+  memberChip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: DESIGN_COLORS.surface2, borderWidth: 1, borderColor: DESIGN_COLORS.border },
+  memberChipSelected: { backgroundColor: DESIGN_COLORS.green, borderColor: DESIGN_COLORS.green },
+  memberChipText: { fontSize: 13, fontWeight: "700", color: DESIGN_COLORS.text2 },
   memberChipTextSelected: { color: "#fff" },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.border, backgroundColor: COLORS.surface, justifyContent: "center", alignItems: "center" },
-  checkboxChecked: { backgroundColor: COLORS.green, borderColor: COLORS.green },
-  recurringBox: { padding: 12, backgroundColor: COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginBottom: 20 },
-  freqBtn: { flex: 1, minWidth: "45%", paddingVertical: 10, borderRadius: 10, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: "center" },
-  freqBtnSel: { borderColor: COLORS.green, backgroundColor: "rgba(5, 150, 105, 0.15)" },
-  freqText: { fontSize: 13, fontWeight: "700", color: COLORS.text2 },
-  freqTextSel: { color: COLORS.green },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.surface, justifyContent: "center", alignItems: "center" },
+  checkboxChecked: { backgroundColor: DESIGN_COLORS.green, borderColor: DESIGN_COLORS.green },
+  recurringBox: { padding: 12, backgroundColor: DESIGN_COLORS.surface2, borderRadius: 12, borderWidth: 1, borderColor: DESIGN_COLORS.border, marginBottom: 20 },
+  freqBtn: { flex: 1, minWidth: "45%", paddingVertical: 10, borderRadius: 10, backgroundColor: DESIGN_COLORS.surface, borderWidth: 1, borderColor: DESIGN_COLORS.border, alignItems: "center" },
+  freqBtnSel: { borderColor: DESIGN_COLORS.green, backgroundColor: "rgba(5, 150, 105, 0.15)" },
+  freqText: { fontSize: 13, fontWeight: "700", color: DESIGN_COLORS.text2 },
+  freqTextSel: { color: DESIGN_COLORS.green },
   footer: {
-    padding: 24, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.surface
+    padding: 24, borderTopWidth: 1, borderTopColor: DESIGN_COLORS.border, backgroundColor: DESIGN_COLORS.surface
   },
   submitBtn: {
-    backgroundColor: COLORS.green, paddingVertical: 16, borderRadius: 16,
+    backgroundColor: DESIGN_COLORS.green, paddingVertical: 16, borderRadius: 16,
     alignItems: "center", marginBottom: 12,
-    shadowColor: COLORS.green, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6
+    shadowColor: DESIGN_COLORS.green, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6
   },
   submitText: { color: "#fff", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
 });

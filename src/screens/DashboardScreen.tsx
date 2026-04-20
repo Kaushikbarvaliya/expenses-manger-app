@@ -25,16 +25,16 @@ import {
   Briefcase,
   MoreVertical,
   Edit2,
-  Trash2
+  Trash2,
+  X
 } from "lucide-react-native";
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser, getGuestId } from "../storage/auth";
-import { CATEGORIES, INCOME_SOURCES, COLORS } from "../constants/design";
+import { CATEGORIES, INCOME_SOURCES, DESIGN_COLORS } from "../constants/design";
 import { AppDatePicker } from "../components/AppDatePicker";
-import { SegmentedControl } from "../components/SegmentedControl";
+import { PeriodFilter, FilterType } from "../components/PeriodFilter";
 import { useCurrency } from "../context/CurrencyContext";
-import theme from "../theme/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -68,17 +68,8 @@ export function DashboardScreen({ navigation }: any) {
   const { expenses, incomes } = useAppSelector(selectActiveTransactions);
 
   // Date Filtering State
+  const [filterType, setFilterType] = useState<FilterType>('month');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [dateViewMode, setDateViewMode] = useState<'month' | 'year'>('month');
-
-  // Generate months and years for segmented control
-  const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const yearOptions = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - 2 + i).toString());
-
-  const currentOptions = dateViewMode === 'month' ? monthOptions : yearOptions;
-  const currentSelectedIndex = dateViewMode === 'month'
-    ? selectedDate.getMonth()
-    : yearOptions.indexOf(selectedDate.getFullYear().toString());
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -139,27 +130,24 @@ export function DashboardScreen({ navigation }: any) {
 
   // Filtered Content
   const { filteredExpenses, filteredIncomes, totalExpense, totalIncome, balance } = useMemo(() => {
-    const fExp = expenses.filter(e => {
-      const d = new Date(e.date);
-      if (dateViewMode === 'month') {
-        // Month selection: filter by both month AND year (monthly data)
-        return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
-      } else {
-        // Year selection: filter by year only (full year data)
-        return d.getFullYear() === selectedDate.getFullYear();
+    const matches = (dateStr: string) => {
+      const d = new Date(dateStr);
+      if (filterType === 'day') {
+        return (
+          d.getDate() === selectedDate.getDate() &&
+          d.getMonth() === selectedDate.getMonth() &&
+          d.getFullYear() === selectedDate.getFullYear()
+        );
       }
-    });
-    const fInc = incomes.filter(i => {
-      const d = new Date(i.date);
-      if (dateViewMode === 'month') {
-        // Month selection: filter by both month AND year (monthly data)
+      if (filterType === 'month') {
         return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
-      } else {
-        // Year selection: filter by year only (full year data)
-        return d.getFullYear() === selectedDate.getFullYear();
       }
-    });
+      // year
+      return d.getFullYear() === selectedDate.getFullYear();
+    };
 
+    const fExp = expenses.filter(e => matches(e.date));
+    const fInc = incomes.filter(i => matches(i.date));
     const expTot = fExp.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const incTot = fInc.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
@@ -170,7 +158,7 @@ export function DashboardScreen({ navigation }: any) {
       totalIncome: incTot,
       balance: incTot - expTot
     };
-  }, [expenses, incomes, selectedDate, dateViewMode]);
+  }, [expenses, incomes, selectedDate, filterType]);
 
   const recentTransactions = useMemo(() => {
     const combined: Transaction[] = [...filteredExpenses, ...filteredIncomes];
@@ -236,30 +224,29 @@ export function DashboardScreen({ navigation }: any) {
       style={styles.headerGradient}
     >
       <SafeAreaView edges={["top"]} style={styles.headerContent}>
+        {/* Top row: profile + notification */}
         <View style={styles.topRow}>
           <TouchableOpacity style={styles.profileBtn} onPress={handleProfileClick}>
             <View style={styles.profileCircle}>
-              <User size={24} color={COLORS.primary} strokeWidth={2.5} />
+              <User size={24} color={DESIGN_COLORS.primary} strokeWidth={2.5} />
             </View>
             <View style={styles.profileBadge}>
-              <Briefcase size={8} color={COLORS.primary} strokeWidth={3} />
+              <Briefcase size={8} color={DESIGN_COLORS.primary} strokeWidth={3} />
             </View>
           </TouchableOpacity>
-
-          <View style={styles.datePickerContainer}>
-            <AppDatePicker
-              value={selectedDate.toISOString()}
-              onChange={(iso) => setSelectedDate(new Date(iso))}
-              mode="month"
-              allowModeSwitch={true}
-            />
-          </View>
 
           <TouchableOpacity style={styles.notificationBtn}>
             <Bell size={22} color="#fff" strokeWidth={2} />
             <View style={styles.notifDot} />
           </TouchableOpacity>
         </View>
+
+        <PeriodFilter
+          type={filterType}
+          onTypeChange={setFilterType}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
 
         <View style={styles.balanceContainer}>
           <Text style={styles.balanceLabel}>Current Balance</Text>
@@ -294,7 +281,7 @@ export function DashboardScreen({ navigation }: any) {
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <View style={[styles.summaryIcon, { backgroundColor: "#DBEAFE" }]}>
-              <TrendingUp size={20} color={COLORS.blue} strokeWidth={2.5} />
+              <TrendingUp size={20} color={DESIGN_COLORS.blue} strokeWidth={2.5} />
             </View>
             <Text style={styles.summaryCardLabel}>Income</Text>
             <Text style={styles.summaryCardValue}>{formatAmount(totalIncome)}</Text>
@@ -302,7 +289,7 @@ export function DashboardScreen({ navigation }: any) {
 
           <View style={styles.summaryCard}>
             <View style={[styles.summaryIcon, { backgroundColor: "#Fee2E2" }]}>
-              <Wallet size={20} color={COLORS.red} strokeWidth={2.5} />
+              <Wallet size={20} color={DESIGN_COLORS.red} strokeWidth={2.5} />
             </View>
             <Text style={styles.summaryCardLabel}>Expenses</Text>
             <Text style={styles.summaryCardValue}>{formatAmount(totalExpense)}</Text>
@@ -315,7 +302,7 @@ export function DashboardScreen({ navigation }: any) {
           <View style={styles.sparkleContainer}>
             <Sparkles size={16} color="#fff" />
           </View>
-          <Text style={styles.insightText}>Your insight is ready</Text>
+          <Text style={styles.insightText}>ght is ready</Text>
         </View>
         <View style={styles.insightActionContainer}>
           <Text style={styles.insightAction}>Get Pro</Text>
@@ -327,10 +314,10 @@ export function DashboardScreen({ navigation }: any) {
         <Text style={styles.sectionTitle}>Transactions</Text>
         <View style={styles.transactionsActions}>
           <TouchableOpacity style={styles.transActionIcon}>
-            <CreditCard size={18} color={COLORS.text3} />
+            <CreditCard size={18} color={DESIGN_COLORS.text3} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.transActionIcon}>
-            <Clock size={18} color={COLORS.text3} />
+            <Clock size={18} color={DESIGN_COLORS.text3} />
           </TouchableOpacity>
           <View style={styles.periodBadge}>
             <Text style={styles.periodText}>For the Period</Text>
@@ -353,7 +340,7 @@ export function DashboardScreen({ navigation }: any) {
           </>
         }
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadData(true)} tintColor={DESIGN_COLORS.primary} />}
         renderItem={({ item }) => {
           const isExp = item.type === "expense";
           const meta = isExp
@@ -380,12 +367,12 @@ export function DashboardScreen({ navigation }: any) {
                   </View>
                 </View>
                 <View style={styles.transAmountContainer}>
-                  <Text style={[styles.transAmount, { color: isExp ? COLORS.red : COLORS.green }]}>
+                  <Text style={[styles.transAmount, { color: isExp ? DESIGN_COLORS.red : DESIGN_COLORS.green }]}>
                     {isExp ? "-" : "+"}{formatAmount(item.amount)}
                   </Text>
                   {isExp && (item as Expense).method === "card" && (
                     <View style={styles.methodBadge}>
-                      <CreditCard size={10} color={COLORS.text3} />
+                      <CreditCard size={10} color={DESIGN_COLORS.text3} />
                       <Text style={styles.methodText}>Card</Text>
                     </View>
                   )}
@@ -395,7 +382,7 @@ export function DashboardScreen({ navigation }: any) {
                 style={styles.optionsButton}
                 onPress={() => setShowOptions(showOptions === item._id ? null : item._id)}
               >
-                <MoreVertical size={20} color={COLORS.text3} />
+                <MoreVertical size={20} color={DESIGN_COLORS.text3} />
               </TouchableOpacity>
               {showOptions === item._id && (
                 <View style={styles.optionsMenu}>
@@ -406,7 +393,7 @@ export function DashboardScreen({ navigation }: any) {
                       navigation.navigate("AddTransaction", { mode: "edit", id: item._id, type: item.type });
                     }}
                   >
-                    <Edit2 size={16} color={COLORS.text} />
+                    <Edit2 size={16} color={DESIGN_COLORS.text} />
                     <Text style={styles.optionText}>Edit</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -416,7 +403,7 @@ export function DashboardScreen({ navigation }: any) {
                       handleDelete(item);
                     }}
                   >
-                    <Trash2 size={16} color={COLORS.red} />
+                    <Trash2 size={16} color={DESIGN_COLORS.red} />
                     <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
                   </TouchableOpacity>
                 </View>
@@ -449,7 +436,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 16,
   },
   profileBtn: {
     width: 44,
@@ -475,48 +462,6 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 2,
-  },
-  dateDisplayButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  dateDisplayText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  datePickerContainer: {
-    flex: 1,
-    marginHorizontal: 15,
-    marginBottom: -theme.SPACING.lg, // offset AppDatePicker bottom margin
-  },
-  monthText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  notificationBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  notifDot: {
-    position: "absolute",
-    top: 10,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.red,
-    borderWidth: 1.5,
-    borderColor: "#fff",
   },
   balanceContainer: {
     alignItems: "center",
@@ -782,7 +727,7 @@ const styles = StyleSheet.create({
   optionsButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: COLORS.surface2,
+    backgroundColor: DESIGN_COLORS.surface2,
     marginLeft: 8,
   },
   optionsMenu: {
@@ -808,15 +753,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   deleteOption: {
-    backgroundColor: COLORS.red + "10",
+    backgroundColor: DESIGN_COLORS.red + "10",
   },
   optionText: {
     fontSize: 14,
     fontWeight: "600",
-    color: COLORS.text,
+    color: DESIGN_COLORS.text,
   },
   deleteText: {
-    color: COLORS.red,
+    color: DESIGN_COLORS.red,
   },
 });
 ;

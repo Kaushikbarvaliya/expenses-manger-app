@@ -17,9 +17,11 @@ import { Plus, ChevronRight, Target, TrendingUp, Sparkles, LogIn, PieChart } fro
 import type { StoredUser } from "../navigation/types";
 import { apiFetch } from "../api/client";
 import { getActiveSheetId, getStoredUser } from "../storage/auth";
-import { COLORS as DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { useCurrency } from "../context/CurrencyContext";
 import { BudgetCard } from "../components/BudgetCard";
+import { AppDatePicker } from "../components/AppDatePicker";
+import { PeriodFilter, FilterType } from "../components/PeriodFilter";
 
 const { width } = Dimensions.get("window");
 
@@ -46,6 +48,10 @@ export function BudgetsScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  // Date Filtering State
+  const [filterType, setFilterType] = useState<FilterType>('month');
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -114,19 +120,41 @@ export function BudgetsScreen({ navigation }: any) {
     navigation.navigate("BudgetForm", { mode: "add" });
   };
 
-  // Summary Logic
+  // Filtered Content Logic
+  const filteredBudgets = useMemo(() => {
+    return budgets.filter(b => {
+      if (filterType === 'year') {
+        return b.periodType === 'yearly' && b.year === selectedDate.getFullYear();
+      }
+      // For both 'day' and 'month', we show the monthly budgets for that month
+      return b.periodType === 'monthly' && b.month === (selectedDate.getMonth() + 1) && b.year === selectedDate.getFullYear();
+    });
+  }, [budgets, filterType, selectedDate]);
+
   const { totalLimit, totalSpent, healthStatus } = useMemo(() => {
-    const limit = budgets.reduce((sum, b) => sum + (Number(b.totalBudget) || 0), 0);
-    
-    // This is a simplification; in a real app, you'd calculate vs specific periods
-    // but for the summary header, we'll show total of active budgets vs total expenses in those periods.
+    const limit = filteredBudgets.reduce((sum, b) => sum + (Number(b.totalBudget) || 0), 0);
+
     let spent = 0;
-    budgets.forEach(b => {
+    filteredBudgets.forEach(b => {
       const scopedExp = expenses.filter(e => {
         const d = new Date(e.date);
         if (isNaN(d.getTime())) return false;
-        if (b.periodType === "yearly") return d.getFullYear() === b.year;
-        return d.getFullYear() === b.year && d.getMonth() + 1 === b.month;
+
+        // Base check for period type
+        const matchesPeriod = b.periodType === "yearly"
+          ? d.getFullYear() === b.year
+          : d.getFullYear() === b.year && d.getMonth() + 1 === b.month;
+
+        if (!matchesPeriod) return false;
+
+        // If filtering by day, only count expenses on that exact day
+        if (filterType === 'day') {
+          return d.getDate() === selectedDate.getDate() &&
+            d.getMonth() === selectedDate.getMonth() &&
+            d.getFullYear() === selectedDate.getFullYear();
+        }
+
+        return true;
       });
       spent += scopedExp.reduce((s, e) => s + (Number(e.amount) || 0), 0);
     });
@@ -137,7 +165,7 @@ export function BudgetsScreen({ navigation }: any) {
     else if (pct >= 85) status = "At Risk";
 
     return { totalLimit: limit, totalSpent: spent, healthStatus: status };
-  }, [budgets, expenses]);
+  }, [filteredBudgets, expenses, filterType, selectedDate]);
 
   const renderHeader = () => (
     <LinearGradient
@@ -148,27 +176,34 @@ export function BudgetsScreen({ navigation }: any) {
     >
       <SafeAreaView edges={["top"]} style={styles.headerContent}>
         <View style={styles.topRow}>
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <ChevronRight size={24} color="#fff" style={{ transform: [{ rotate: "180deg" }] }} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Budgets & Goals</Text>
-          <TouchableOpacity 
-            style={styles.plusButton} 
+          <TouchableOpacity
+            style={styles.plusButton}
             onPress={handleAddBudget}
           >
             <Plus size={24} color="#fff" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
 
+        <PeriodFilter
+          type={filterType}
+          onTypeChange={setFilterType}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
+
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryLabel}>Combined Goal Limit</Text>
           <Text style={styles.summaryAmount}>{formatAmount(totalLimit)}</Text>
           <View style={styles.statusBadge}>
             <Target size={12} color="#fff" />
-            <Text style={styles.statusText}>{budgets.length} Active Targets</Text>
+            <Text style={styles.statusText}>{filteredBudgets.length} Active Targets</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -181,10 +216,10 @@ export function BudgetsScreen({ navigation }: any) {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Financial Health</Text>
           <View style={[
-            styles.healthPill, 
-            healthStatus === "Over Budget" ? { backgroundColor: DESIGN_COLORS.red + "15" } : 
-            healthStatus === "At Risk" ? { backgroundColor: DESIGN_COLORS.amber + "15" } : 
-            { backgroundColor: DESIGN_COLORS.green + "15" }
+            styles.healthPill,
+            healthStatus === "Over Budget" ? { backgroundColor: DESIGN_COLORS.red + "15" } :
+              healthStatus === "At Risk" ? { backgroundColor: DESIGN_COLORS.amber + "15" } :
+                { backgroundColor: DESIGN_COLORS.green + "15" }
           ]}>
             <TrendingUp size={12} color={healthStatus === "Over Budget" ? DESIGN_COLORS.red : healthStatus === "At Risk" ? DESIGN_COLORS.amber : DESIGN_COLORS.green} />
             <Text style={[
@@ -193,7 +228,7 @@ export function BudgetsScreen({ navigation }: any) {
             ]}>{healthStatus}</Text>
           </View>
         </View>
-        
+
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.cardLabel}>Aggregated Spent</Text>
@@ -208,7 +243,7 @@ export function BudgetsScreen({ navigation }: any) {
         </View>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.insightBanner}
         onPress={handleAddBudget}
       >
@@ -265,13 +300,13 @@ export function BudgetsScreen({ navigation }: any) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <FlatList
-        data={budgets}
+        data={filteredBudgets}
         keyExtractor={(item) => item._id}
         ListHeaderComponent={
           <>
             {renderHeader()}
             {renderSummaryCard()}
-            {budgets.length > 0 && (
+            {filteredBudgets.length > 0 && (
               <View style={styles.listHeader}>
                 <Text style={styles.listTitle}>Your Budgets</Text>
               </View>
@@ -280,10 +315,10 @@ export function BudgetsScreen({ navigation }: any) {
         }
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={() => void loadData(true)} 
-            tintColor={DESIGN_COLORS.primary} 
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void loadData(true)}
+            tintColor={DESIGN_COLORS.primary}
           />
         }
         renderItem={({ item }) => (
@@ -292,6 +327,8 @@ export function BudgetsScreen({ navigation }: any) {
             expenses={expenses}
             onEdit={handleEditBudget}
             onDelete={handleDeleteBudget}
+            filterType={filterType}
+            selectedDate={selectedDate}
           />
         )}
         ListEmptyComponent={renderEmptyState}
@@ -318,7 +355,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 16,
   },
   backButton: {
     width: 44,

@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { apiFetch } from "../../api/client";
 import { RecurringTransaction } from "../../types";
 import { RootState } from "../index";
-import { getActiveSheetId } from "../../storage/auth";
+import { getActiveSheetId, getStoredUser } from "../../storage/auth";
 
 interface RecurringState {
   items: RecurringTransaction[];
@@ -20,25 +20,29 @@ export const fetchRecurring = createAsyncThunk<
   RecurringTransaction[],
   void,
   { state: RootState }
->("recurring/fetchRecurring", async (_, { getState }) => {
-  const state = getState();
-  const token = state.transactions.user?.token;
+>("recurring/fetchRecurring", async () => {
+  // Use getStoredUser() from storage — state.transactions has no 'user' property
+  const storedUser = await getStoredUser();
+  const token = storedUser?.token;
   const sheetId = await getActiveSheetId();
 
-  return apiFetch<RecurringTransaction[]>("/recurring", {
+  const result = await apiFetch<RecurringTransaction[]>("/recurring", {
     method: "GET",
     token,
     sheetId: sheetId || undefined,
   });
+
+  // Guard: the API may return an error object instead of an array
+  return Array.isArray(result) ? result : [];
 });
 
 export const addRecurring = createAsyncThunk<
   RecurringTransaction,
   Omit<RecurringTransaction, "_id" | "isActive" | "nextRunDate">,
   { state: RootState }
->("recurring/addRecurring", async (payload, { getState }) => {
-  const state = getState();
-  const token = state.transactions.user?.token;
+>("recurring/addRecurring", async (payload) => {
+  const storedUser = await getStoredUser();
+  const token = storedUser?.token;
   const sheetId = await getActiveSheetId();
 
   return apiFetch<RecurringTransaction>("/recurring", {
@@ -61,9 +65,9 @@ export const updateRecurring = createAsyncThunk<
   RecurringTransaction,
   { id: string; data: Partial<RecurringTransaction> },
   { state: RootState }
->("recurring/updateRecurring", async ({ id, data }, { getState }) => {
-  const state = getState();
-  const token = state.transactions.user?.token;
+>("recurring/updateRecurring", async ({ id, data }) => {
+  const storedUser = await getStoredUser();
+  const token = storedUser?.token;
   const sheetId = await getActiveSheetId();
 
   // Maps name to title for backend expectations
@@ -80,9 +84,9 @@ export const deleteRecurring = createAsyncThunk<
   string,
   string,
   { state: RootState }
->("recurring/deleteRecurring", async (id, { getState }) => {
-  const state = getState();
-  const token = state.transactions.user?.token;
+>("recurring/deleteRecurring", async (id) => {
+  const storedUser = await getStoredUser();
+  const token = storedUser?.token;
   const sheetId = await getActiveSheetId();
 
   await apiFetch(`/recurring/${id}`, {
@@ -97,9 +101,9 @@ export const toggleRecurring = createAsyncThunk<
   RecurringTransaction,
   string,
   { state: RootState }
->("recurring/toggleRecurring", async (id, { getState }) => {
-  const state = getState();
-  const token = state.transactions.user?.token;
+>("recurring/toggleRecurring", async (id) => {
+  const storedUser = await getStoredUser();
+  const token = storedUser?.token;
   const sheetId = await getActiveSheetId();
 
   return apiFetch<RecurringTransaction>(`/recurring/${id}/toggle`, {
@@ -121,7 +125,8 @@ const recurringSlice = createSlice({
     });
     builder.addCase(fetchRecurring.fulfilled, (state, action) => {
       state.loading = false;
-      state.items = action.payload;
+      // Double-guard: thunk already returns [] on bad responses, but be safe
+      state.items = Array.isArray(action.payload) ? action.payload : [];
     });
     builder.addCase(fetchRecurring.rejected, (state, action) => {
       state.loading = false;
@@ -134,7 +139,10 @@ const recurringSlice = createSlice({
     });
     builder.addCase(addRecurring.fulfilled, (state, action) => {
       state.loading = false;
-      state.items.unshift(action.payload);
+      if (!Array.isArray(state.items)) state.items = [];
+      if (action.payload && action.payload._id) {
+        state.items.unshift(action.payload);
+      }
     });
     builder.addCase(addRecurring.rejected, (state, action) => {
       state.loading = false;
@@ -170,6 +178,7 @@ const recurringSlice = createSlice({
 
     // Delete
     builder.addCase(deleteRecurring.fulfilled, (state, action) => {
+      if (!Array.isArray(state.items)) state.items = [];
       state.items = state.items.filter((item) => item._id !== action.payload);
     });
   },

@@ -24,11 +24,26 @@ const migrations: any = {
       },
     };
   },
+  // Version 2: fix corrupted recurring.items — old code used state.transactions.user?.token
+  // (which doesn't exist) so API calls were unauthenticated, returning {message: "..."} objects
+  // instead of arrays. These got persisted. Always ensure items is a valid array.
+  2: (state: any) => {
+    const recurringItems = state?.recurring?.items;
+    return {
+      ...state,
+      recurring: {
+        ...(state?.recurring || {}),
+        items: Array.isArray(recurringItems) ? recurringItems : [],
+        loading: false,
+        error: null,
+      },
+    };
+  },
 };
 
 const persistConfig = {
   key: 'root',
-  version: 1,
+  version: 2,
   storage: AsyncStorage,
   whitelist: ['transactions', 'settings', 'recurring'],
   migrate: createMigrate(migrations, { debug: false }),
